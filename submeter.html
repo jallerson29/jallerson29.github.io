@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Submeter Projeto - Apollus</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<header class="topbar">
+  <div class="logo">
+  <a href="index.html">APOLLUS</a>
+  </div>
+  <nav>
+  </nav>
+</header>
+
+<section class="submit-hero">
+  <h1>Envie Seu Projeto</h1>
+  <p>Mostre sua arte. Nós analisaremos com atenção.</p>
+  <p class="prazo">
+Todos os projetos passam por curadoria técnica e estratégica. O prazo de resposta é de até 30 dias.
+</p>
+</section>
+
+  <section class="submit-section">
+        <div class="form-container">
+<form action="https://formsubmit.co/contato@apollusart.com" method="POST" enctype="multipart/form-data">
+
+  <input type="text" name="Nome" placeholder="Nome (empresa, artístico, etc) *" required>
+
+  <select name="Tipo de Projeto" required>
+    <option value="">Selecione o tipo de projeto *</option>
+    <option value="Produção">Produção</option>
+    <option value="Mixagem & masterização">Mixagem & masterização</option>
+    <option value="Eventos">Eventos</option>
+    <option value="Arte & Entretenimento">Arte & Entretenimento</option>
+    <option value="Locações">Locações</option>
+    <option value="Distribuição Digital">Distribuição Digital</option>
+  </select>
+
+  <input type="text" name="Link" placeholder="Link (Spotify, Drive, etc) *" required>
+
+  <input type="file" name="Foto" accept="image/*">
+
+  <textarea name="Mensagem" placeholder="Fale sobre seu projeto"></textarea>
+
+  <button type="submit">Enviar Projeto</button>
+
+  <!-- Configurações invisíveis -->
+  <input type="hidden" name="_subject" value="Novo Lead - Envie Seu Projeto | Apollus">
+  <input type="hidden" name="_captcha" value="false">
+  <input type="hidden" name="_autoresponse" value="Recebemos seu projeto com sucesso. O prazo de avaliação é de até 30 dias. Caso seja aprovado, entraremos em contato. - Equipe Apollus">
+
+</form>
+    <a href="index.html" class="voltar">← Voltar para página principal</a>
+  </div>
+</section>
+
+<script src="script.js"></script>
+</body>
+</html>
