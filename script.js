@@ -32,7 +32,7 @@ function login() {
   const email = document.getElementById("email").value;
   const password = document.getElementById("password").value;
 
-  if (email === "admin@apollus.com" && password === "1234") {
+  if (email === "Jallerson@apollusart.com" && password === "********") {
     localStorage.setItem("adminAuth", "true");
     window.location.href = "dashboard.html";
   } else {
@@ -63,22 +63,22 @@ function showSection(section) {
 
   if (section === "hero")
     document.getElementById("heroSection").classList.remove("hidden");
-}
+// }
 
 // CARREGAR SUBMISSÕES
-function carregarSubmissoes() {
-  const lista = document.getElementById("listaSubmissoes");
-  const contador = document.getElementById("contador");
+// function carregarSubmissoes() {
+ //  const lista = document.getElementById("listaSubmissoes");
+ //  const contador = document.getElementById("contador");
 
-  if (!lista) return;
+ //  if (!lista) return;
 
-  const submissions = JSON.parse(localStorage.getItem("submissions")) || [];
-  lista.innerHTML = "";
-  contador.innerText = submissions.length;
+ //  const submissions = JSON.parse(localStorage.getItem("submissions")) || [];
+//   lista.innerHTML = "";
+ //  contador.innerText = submissions.length;
 
-  submissions.forEach((item, index) => {
-    const card = document.createElement("div");
-    card.classList.add("submission-card");
+//   submissions.forEach((item, index) => {
+//     const card = document.createElement("div");
+ //    card.classList.add("submission-card");
 
     card.innerHTML = `
       ${item.foto ? `<img src="${item.foto}">` : ""}
@@ -92,40 +92,40 @@ function carregarSubmissoes() {
         <button onclick="aprovar(${index})">Aprovar</button>
         <button onclick="recusar(${index})">Recusar</button>
       </div>
-    `;
+   `;
 
-    lista.appendChild(card);
-  });
-}
+//     lista.appendChild(card);
+//   });
+// }
 
-function aprovar(index) {
-  let submissions = JSON.parse(localStorage.getItem("submissions")) || [];
-  submissions[index].status = "Aprovado";
-  localStorage.setItem("submissions", JSON.stringify(submissions));
-  carregarSubmissoes();
-}
+// function//  aprovar(index) {
+//   let submissions = JSON.parse(localStorage.getItem("submissions")) || [];
+//   submissions[index].status = "Aprovado";
+//   localStorage.setItem("submissions", JSON.stringify(submissions));
+//   carregarSubmissoes();
+// }
 
-function recusar(index) {
-  let submissions = JSON.parse(localStorage.getItem("submissions")) || [];
-  submissions[index].status = "Recusado";
-  localStorage.setItem("submissions", JSON.stringify(submissions));
-  carregarSubmissoes();
-}
+// function recusar(index) {
+//   let submissions = JSON.parse(localStorage.getItem("submissions")) || [];
+//   submissions[index].status = "Recusado";
+//   localStorage.setItem("submissions", JSON.stringify(submissions));
+//   carregarSubmissoes();
+// }
 
-window.addEventListener("load", carregarSubmissoes);
+// window.addEventListener("load", carregarSubmissoes);
 // EDITAR HERO
-function updateHero() {
-  const value = document.getElementById("heroInput").value;
-  localStorage.setItem("heroTitle", value);
-  alert("Atualizado!");
-}
+// function updateHero() {
+//   const value = document.getElementById("heroInput").value;
+//   localStorage.setItem("heroTitle", value);
+//  alert("Atualizado!");
+//}
 
-function enviar() {
-  const nome = document.getElementById("nome").value;
-  const genero = document.getElementById("genero").value;
-  const link = document.getElementById("link").value;
-  const mensagem = document.getElementById("mensagem").value;
-  
+//function enviar() {
+ // const nome = document.getElementById("nome").value;
+ // const genero = document.getElementById("genero").value;
+ // const link = document.getElementById("link").value;
+ // const mensagem = document.getElementById("mensagem").value;
+ // 
 
   if (!nome || !genero || !link) {
     alert("Preencha todos os campos obrigatórios.");
@@ -218,4 +218,5 @@ document.addEventListener("click", (e) => {
     options.classList.remove("open");
     select.classList.remove("active");
   }
+
 });
