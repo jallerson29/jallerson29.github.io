@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Painel - Apollus</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+
+<div class="admin-container">
+
+<aside class="admin-sidebar">
+  <h2>APOLLUS</h2>
+  <ul>
+    <li class="menu-item active" onclick="trocarAba('dashboard', this)">📊 Dashboard</li>
+    <li class="menu-item" onclick="trocarAba('submissoes', this)">🎤 Submissões</li>
+    <li class="menu-item" onclick="trocarAba('config', this)">⚙️ Configurações</li>
+  </ul>
+</aside>
+
+  <main class="admin-main">
+
+  <div id="dashboard" class="aba">
+    <h1>Painel Administrativo</h1>
+    <div class="admin-stats">
+      <div class="stat-card">
+        <h3 id="contador">0</h3>
+        <p>Total de Submissões</p>
+      </div>
+    </div>
+    <a href="../index.html" class="floating-home">
+  ⬅ Início
+</a>
+  </div>
+
+
+    <div id="submissoes" class="aba" style="display:none;">
+    <h1>Submissões</h1>
+    <div id="listaSubmissoes" class="submissions-grid"></div>
+  </div>
+
+  <div id="config" class="aba" style="display:none;">
+    <h1>Configurações</h1>
+    <p>Área futura para editar textos do site, hero, etc.</p>
+  </div>
+
+  </main>
+
+</div>
+
+<script src="../admin.js"></script>
+</body>
+</html>
