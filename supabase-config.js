@@ -7,8 +7,8 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
  *
  * Nunca coloque a service_role key no site.
  */
-export const SUPABASE_URL = 'COLE_AQUI_A_PROJECT_URL';
-export const SUPABASE_ANON_KEY = 'COLE_AQUI_A_PUBLISHABLE_KEY';
+export const SUPABASE_URL = 'https://mlbryqllapbnilqxtkzy.supabase.co';
+export const SUPABASE_ANON_KEY = 'sb_publishable_pk7O9YGYo5FrghO7uVQdYw_wmR2ExSH';
 export const MEDIA_BUCKET = 'apollus-media';
 
 export const isSupabaseConfigured =
