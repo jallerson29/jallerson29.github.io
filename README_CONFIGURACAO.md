@@ -1,9 +1,5 @@
 # Apollus — site, portfólio, agenda e painel administrativo
 
-## Visualização local
-
-A página inicial agora aparece mesmo sem Supabase configurado. Para testar todas as funções do CMS, abra o projeto por um servidor local (por exemplo, a extensão Live Server do VS Code) ou pelo GitHub Pages. Evite testar o painel administrativo apenas dando duplo clique nos arquivos, pois módulos e chamadas externas podem ser bloqueados pelo navegador no protocolo `file://`.
-
 Este pacote está pronto para ser publicado no GitHub Pages e mantém a identidade visual atual. Ele adiciona:
 
 - portfólio alimentado pelo painel administrativo;

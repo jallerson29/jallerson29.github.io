@@ -3,240 +3,271 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title> Apollus | Produtora </title>
-  <link rel="icon" type="image/png" sizes="32x32" href="/docs/apollus.png" alt="apollus">
+  <meta name="description" content="Apollus — produtora criativa de música, eventos, teatro, cultura e educação.">
+  <meta name="theme-color" content="#f7efe4">
+  <title>Apollus | Arte, Som & Experiência</title>
 
-  <!-- Google Font -->
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700&display=swap" rel="stylesheet">
-
+  <link rel="icon" type="image/png" href="docs/apollus-logo-transparent.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&family=Permanent+Marker&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body data-page="home">
+  <header id="header" class="site-header">
+    <div class="container nav-wrap">
+      <a class="brand" href="#inicio" aria-label="Ir para o início">
+        <img src="docs/apollus-logo-transparent.png" alt="Apollus">
+      </a>
 
-<header id="header">
-  <div class="container nav">
-    <h1 class="logo">APOLLUS</h1>
-    <nav>
-      <ul>
-        <li><a href="#sobre">Sobre</a></li>
-        <li><a href="#estrutura">Estrutura</a></li>
-        <li><a href="#selo">Selo</a></li>
-        <li><a href="submeter.html" class="nav-cta">Submeter Projeto</a></li>
-      </ul>
-    </nav>
-  </div>
-</header>
+      <button class="menu-toggle" aria-label="Abrir menu" aria-expanded="false" aria-controls="main-menu">
+        <span></span><span></span><span></span>
+      </button>
 
-<section class="hero">
-  <div class="overlay"></div>
-  <div class="hero-content fade-in">
-    <h2>Arte & Entretenimento<br>Música · Teatro · Artes · Cultura </h2>
-<div class="hero-services">
-  <a href="#produtora">Produtora & Gravadora</a>
-  <a href="#mixagem">Mixagem & Masterização</a>
-  <a href="#locacoes">Locações & Eventos</a>
-  <a href="#distribuicao">Distribuição Digital</a>
-  <a href="#cursos">Cursos e Aulas</a>
-</div>
-
-    <div class="hero-buttons">
-      <a href="#contato" class="btn primary">Produzir Meu Projeto</a>
-      <a href="#selo" class="btn secondary">Conhecer o Selo</a>
-      <a href="#equipe" class="btn secondary">Conhecer a equipe</a>
+      <nav id="main-menu" class="main-nav" aria-label="Navegação principal">
+        <a href="#sobre">Sobre</a>
+        <a href="#servicos">O que fazemos</a>
+        <a href="#processo">Como funciona</a>
+        <a href="projetos.html">Projetos</a>
+        <a href="#equipe">Equipe</a>
+        <a href="https://wa.me/5541996600432?text=Olá%20Apollus!%20Tenho%20uma%20ideia%20de%20projeto%20e%20gostaria%20de%20conversar." class="nav-cta" target="_blank" rel="noopener noreferrer">Falar com a Apollus</a>
+      </nav>
     </div>
-  </div>
-</section>
-<section id="sobre" class="section fade-in">
-  <div class="container">
-    <h2>Estrutura</h2>
-    <h3>Criada e pensada para VOCÊ.</h3>
-    <p>
-      A Apollus é uma produtora e selo artístico dedicado ao desenvolvimento de projetos musicais, projetos autorais, culturais e artisticos
-com visão de carreira. Unimos direção e estratégia para
-construir identidades sólidas e posicionamento profissional no mercado.
-Trabalhamos com artistas e projetos que entendem a arte como construção de legado.
-    </p>
-  </div>
-</section>
-<section id="estrutura" class="section dark">
-  <div class="container">
-    <h2>Nossa Estrutura</h2>
-    <div class="grid">
-      <div class="card fade-in" id="produtora">
-        <h4>Direção Artística</h4>
-        <p>Desenvolvimento completo do artista, da concepção estética à consolidação de marca. 
-          Atuamos na direção criativa, posicionamento estratégico e estruturação de catálogo para crescimento sólido no mercado.
-</p>
+  </header>
+
+  <main>
+    <section id="inicio" class="hero section-art">
+      <div class="paint paint-a"></div>
+      <div class="paint paint-b"></div>
+      <div class="paint paint-c"></div>
+      <div class="halftone halftone-a"></div>
+      <div class="halftone halftone-b"></div>
+
+      <div class="container hero-grid">
+        <div class="hero-copy reveal">
+          <p class="eyebrow">Produtora criativa independente</p>
+          <h1>
+            Transformamos<br>
+            <span>ideias</span> em<br>
+            experiências.
+          </h1>
+
+          <p class="hero-text">
+            Música, eventos, teatro, cultura e educação reunidos em um só lugar para dar forma, direção e vida a projetos criativos.
+          </p>
+
+          <div class="hero-actions">
+            <a href="https://wa.me/5541996600432?text=Olá%20Apollus!%20Tenho%20uma%20ideia%20de%20projeto%20e%20gostaria%20de%20conversar." class="btn btn-dark" target="_blank" rel="noopener noreferrer">Quero falar sobre meu projeto</a>
+            <a href="#servicos" class="btn btn-light">Conhecer a Apollus</a>
+          </div>
+
+          <div class="hero-tags" aria-label="Áreas de atuação">
+            <span>Música</span><span>Eventos</span><span>Teatro</span><span>Cultura</span><span>Educação</span>
+          </div>
+        </div>
       </div>
-      <div class="card fade-in" id="mixagem">
-        <h4>Mixagem & Masterização</h4>
-        <p>O processo de combinar e equilibrar todas as faixas de áudio gravadas em uma música, como vozes, instrumentos e efeitos. 
-          Durante a mixagem, o engenheiro de som ajusta os volumes, aplica equalização, compressão e outros efeitos para criar um som coeso e agradável.</p>
+
+      <a href="#sobre" class="scroll-cue" aria-label="Descer para a próxima seção">↓</a>
+    </section>
+
+    <section id="sobre" class="section about reveal">
+      <div class="container about-grid">
+        <div>
+          <p class="section-kicker">Quem somos</p>
+          <h2>Uma ponte entre a ideia e a realização.</h2>
+        </div>
+        <div class="about-copy">
+          <p>
+            O nome <strong>Apollus</strong> nasce de uma releitura de Apolo, figura mitológica ligada à música, à arte, à luz e à inspiração criativa.
+          </p>
+          <p>
+            Somos uma produtora independente que conecta criação, técnica e estratégia para transformar ideias em projetos reais — mesmo quando elas ainda estão no começo.
+          </p>
+          <div class="signature-line">Arte • Som • Experiência</div>
+        </div>
       </div>
-      
-      <div class="card fade-in" id="locacoes">
-        <h4>Locações e Eventos</h4>
-        <p>Estrutura para produções culturais e eventos com suporte técnico especializado. 
-          Planejamento, execução e ambientação pensados para elevar a experiência artística ao máximo nível.
-        </p>
+    </section>
+
+    <section id="servicos" class="section services section-art">
+      <div class="container">
+        <div class="section-heading reveal">
+          <p class="section-kicker">O que fazemos</p>
+          <h2>Projetos que atravessam linguagens.</h2>
+          <p>Da primeira conversa à entrega final, cada trabalho é construído de forma personalizada.</p>
+        </div>
+
+        <div class="services-grid">
+          <article class="service-card purple reveal">
+            <span class="service-number">01</span>
+            <h3>Música</h3>
+            <p>Produção musical, gravação, edição, mixagem, masterização, direção artística e lançamento de artistas.</p>
+          </article>
+
+          <article class="service-card yellow reveal">
+            <span class="service-number">02</span>
+            <h3>Eventos</h3>
+            <p>Produção artística, cultural, executiva e geral, além de som, iluminação, PA, monitores e operação técnica.</p>
+          </article>
+
+          <article class="service-card cyan reveal">
+            <span class="service-number">03</span>
+            <h3>Teatro & Projetos Artísticos</h3>
+            <p>Produção, sonoplastia, trilha, apoio técnico e artístico, operação e criação de experiências culturais.</p>
+          </article>
+
+          <article class="service-card pink reveal">
+            <span class="service-number">04</span>
+            <h3>Cursos & Aulas</h3>
+            <p>Música, produção musical, gravação, mixagem, desenvolvimento artístico, mentorias e formações personalizadas.</p>
+          </article>
+
+          <article class="service-card cream reveal">
+            <span class="service-number">05</span>
+            <h3>Selo & Gravadora</h3>
+            <p>Curadoria, direção de carreira, estratégia de lançamento, distribuição e construção de catálogo artístico.</p>
+          </article>
+
+          <article class="service-card black reveal">
+            <span class="service-number">06</span>
+            <h3>Projetos Culturais</h3>
+            <p>Concepção, planejamento, produção e articulação para transformar propostas culturais em experiências possíveis.</p>
+          </article>
+        </div>
       </div>
-      <div class="card fade-in" id="distribuicao">
-        <h4>Estratégia de Lançamento</h4>
-        <p>Estratégia digital completa para lançamento e posicionamento. Distribuição global, 
-          planejamento de campanha e análise de performance para ampliar alcance e consolidar presença no mercado.
-</p>
+    </section>
+
+    <section id="processo" class="section process reveal">
+      <div class="container">
+        <div class="section-heading narrow">
+          <p class="section-kicker">Como funciona</p>
+          <h2>Você traz a ideia. A gente ajuda a fazer acontecer.</h2>
+        </div>
+
+        <div class="process-track">
+          <div class="process-step"><b>01</b><h3>Escuta</h3><p>Entendemos sua ideia, objetivo e contexto.</p></div>
+          <div class="process-step"><b>02</b><h3>Direção</h3><p>Construímos o caminho criativo, técnico e estratégico.</p></div>
+          <div class="process-step"><b>03</b><h3>Produção</h3><p>Organizamos equipe, cronograma e execução.</p></div>
+          <div class="process-step"><b>04</b><h3>Entrega</h3><p>Finalizamos com acompanhamento e cuidado.</p></div>
+        </div>
       </div>
+    </section>
+
+    <section id="equipe" class="section team-section section-art">
+      <div class="container">
+        <div class="section-heading reveal">
+          <p class="section-kicker">Nossa equipe</p>
+          <h2>Pessoas diferentes, uma mesma vontade de criar.</h2>
+        </div>
+
+        <div class="team-grid">
+          <article class="team-card reveal">
+            <a href="https://www.instagram.com/jall3r/" target="_blank" rel="noopener">
+              <img src="docs/JALL3R.jpg" alt="Jallerson Henrique">
+              <div><h3>Jallerson Henrique</h3><p>CEO • Produção Musical</p></div>
+            </a>
+          </article>
+
+          <article class="team-card reveal">
+            <a href="https://www.instagram.com/liriell_gomes/" target="_blank" rel="noopener">
+              <img src="docs/Liriel.png" alt="Liriel">
+              <div><h3>Liriel</h3><p>CEO • Produção Musical</p></div>
+            </a>
+          </article>
+
+          <article class="team-card reveal">
+            <a href="https://www.instagram.com/ajupaganotto/" target="_blank" rel="noopener">
+              <img src="docs/Juliana.jpg" alt="Ju Paganotto">
+              <div><h3>Ju Paganotto</h3><p>CEO • Teatro & Produção</p></div>
+            </a>
+          </article>
+
+          <article class="team-card reveal">
+            <a href="https://www.instagram.com/bellamsx/" target="_blank" rel="noopener">
+              <img src="docs/Bella.jpg" alt="Bella Monteiro">
+              <div><h3>Bella Monteiro</h3><p>CEO • Teatro & Produção</p></div>
+            </a>
+          </article>
+
+          <article class="team-card reveal">
+            <a href="https://www.instagram.com/profjalle/" target="_blank" rel="noopener">
+              <img src="docs/Jallerson.jpg" alt="Jallerson Carlos">
+              <div><h3>Jallerson Carlos</h3><p>Professor de Música</p></div>
+            </a>
+          </article>
+
+          <article class="team-card reveal">
+            <a href="https://www.instagram.com/ale_pianoteacher/" target="_blank" rel="noopener">
+              <img src="docs/Alessandro Mattos.jpg" alt="Alessandro Mattos">
+              <div><h3>Alessandro Mattos</h3><p>Professor de Música</p></div>
+            </a>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="cta-final section-art reveal">
+      <div class="container cta-grid">
+        <div>
+          <p class="section-kicker">Vamos criar?</p>
+          <h2>Sua ideia não precisa chegar pronta.</h2>
+          <p>A Apollus ajuda a dar forma, direção e estrutura para ela acontecer.</p>
+        </div>
+        <a href="https://wa.me/5541996600432?text=Olá%20Apollus!%20Tenho%20uma%20ideia%20de%20projeto%20e%20gostaria%20de%20conversar." class="btn btn-dark" target="_blank" rel="noopener noreferrer">Falar sobre meu projeto</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-content">
+      <a class="footer-brand" href="#inicio" aria-label="Voltar ao início">
+        <img src="docs/apollus-logo-transparent.png" alt="Apollus">
+      </a>
+
+      <p class="footer-signature">
+        Arte <span class="dot dot-purple">•</span>
+        Som <span class="dot dot-yellow">•</span>
+        Experiência
+      </p>
+
+      <nav class="footer-links" aria-label="Links do rodapé">
+        <a class="footer-link instagram" href="https://www.instagram.com/apollusart/" target="_blank" rel="noopener" aria-label="Instagram da Apollus">
+          <span class="footer-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="5"></rect>
+              <circle cx="12" cy="12" r="4"></circle>
+              <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"></circle>
+            </svg>
+          </span>
+          <span>Instagram</span>
+        </a>
+
+        <a class="footer-link projects" href="projetos.html" aria-label="Projetos">
+          <span class="footer-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 7.5h6l2 2H21v9.5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+              <path d="M3 7.5V6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v1.5"></path>
+            </svg>
+          </span>
+          <span>Projetos</span>
+        </a>
+
+        <a class="footer-link admin" href="admin/login.html" aria-label="Área administrativa">
+          <span class="footer-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="9" cy="7" r="4"></circle>
+              <path d="M2.5 20a6.5 6.5 0 0 1 11.5-4.2"></path>
+              <rect x="14" y="13" width="7" height="8" rx="2"></rect>
+              <path d="M16 13v-1.2a1.5 1.5 0 0 1 3 0V13"></path>
+            </svg>
+          </span>
+          <span>Área administrativa</span>
+        </a>
+      </nav>
+
+      <small class="footer-copy">© 2026 Apollus</small>
     </div>
-  </div>
-</section>
+  </footer>
 
-<section id="selo" class="section fade-in">
-  <div class="container">
-    <h2>Selo Artístico Apollus</h2>
-    <p>
-      Selecionamos artistas com potencial para desenvolvimento de carreira e construção de catálogo.
-Projetos aprovados recebem acompanhamento estratégico e direcionamento artístico contínuo.
-Envie seu projeto para avaliação da nossa curadoria.
-    </p>
-  </div>
-</section>
-
-  <section id="cursos" class="section dark">
-  <div class="container">
-    <h2>Cursos e Aulas</h2>
-    <p>
-      Aulas e cursos profissionais em música, produção musical e tecnologia do áudio. 
-Ensino de instrumentos online e presencial, formação em FL Studio, Pro Tools, 
-produção musical, operação de mesas analógicas e digitais, sistemas de PA, 
-performance artística e fundamentos de contratos no mercado cultural.
-    </p>
-    <ul>
-<li>Aulas de instrumentos (online e presencial)</li>
-<li>Produção musical</li>
-<li>FL Studio e Pro Tools</li>
-<li>Tecnologia do áudio</li>
-<li>Operação de mesas analógicas e digitais</li>
-<li>Sistemas de PA</li>
-<li>Teatro e performance</li>
-<li>Editoração e entendimento de contratos</li>
-</ul>
-  </div>
-
-<section id="equipe" class="team-section">
-  <div class="container">
-    
-    <h2 class="section-title">Nossa Equipe</h2>
-    <p class="section-subtitle">
-      Profissionais dedicados à excelência artística e estratégica.
-    </p>
-
-    <div class="team-grid">
-
-      <div class="team-card">
-        <a href="https://www.instagram.com/jall3r/">
-        <img src="/docs/JALL3R.jpg" alt="CEO">
-        </a>
-        <h3>Jallerson Henrique - (JALL3R)</h3>
-        <span>CEO & Produção Musical</span>
-        <span>Certificado</span>
-      </div>
-
-      <div class="team-card">
-        <a href="https://www.instagram.com/liriell_gomes/">
-          <img src="/docs/Liriel.png" alt="CEO">
-        </a>
-        <h3>Liriel</h3>
-        <span>CEO & Produção Musical</span>
-        <span>Certificada</span>
-      </div>
-
-      <div class="team-card">
-        <a href="https://www.instagram.com/ajupaganotto/">
-        <img src="/docs/Juliana.jpg" alt="CEO">
-        </a>
-        <h3>Ju Paganotto</h3>
-        <span>CEO & Teatro e produção</span>
-        <span>Certificada</span>
-      </div>
-
-      <div class="team-card">
-       <a href="https://www.instagram.com/bellamsx/"> 
-         <img src="/docs/Bella.jpg" alt="CEO">
-       </a>
-        <h3>Bella Monteiro</h3>
-        <span>CEO & Teatro e produção</span>
-        <span>Certificada</span>
-      </div>
-      
-      <div class="team-card">
-        <a href="https://www.instagram.com/profjalle/">
-          <img src="/docs/Jallerson.jpg" alt="Professor"></a>
-        <h3>Jallerson Carlos</h3>
-        <span>Professor de Música</span>
-        <span>Certificado</span>
-      </div>
-      
-      <div class="team-card">
-        <a href="https://www.instagram.com/ale_pianoteacher/">
-          <img src="/docs/Alessandro Mattos.jpg" alt="Professor"></a>
-        <h3>Alessandro Mattos</h3>
-        <span>Professor de Música</span>
-        <span>Certificado</span>
-      </div>
-
-    </div>
-
-  </div>
-</section>
-
-<section id="contato" class="cta-final">
-  <div class="container">
-    <h2>Está pronto para levar seu projeto ao próximo nível?</h2>
-    <a href="submeter.html" class="btn primary">Submeter Projeto</a>
-  </div>
-</section>
-<!-- 
-<section id="contato" class="section dark fade-in">
-  <div class="container">
-    <h3>Submeta Seu Projeto</h3>
-    <form>
-      <input type="text" placeholder="Nome Artístico" required>
-      <input type="text" placeholder="Gênero Musical" required>
-      <input type="url" placeholder="Link de Trabalho Anterior">
-      <textarea placeholder="Objetivo de Carreira"></textarea>
-      <button type="submit" class="btn primary">Enviar Projeto</button>
-    </form>
-  </div>
-</section>
--->
-
-
-<script src="script.js"></script>
-
-<footer style="border-color: #c8a84e; border-top: 10px; background-color: black; text-align:center; padding:20px; font-size:12px;">
-  © 2026 Apollus 
-  <br>
-  <a href="admin/login.html" style="color:var(--text); text-decoration:none;">
-    Área Administrativa
-  </a>
-</footer>
+  <script defer src="script.js"></script>
 </body>
-
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

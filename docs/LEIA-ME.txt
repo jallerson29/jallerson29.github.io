@@ -1,0 +1,12 @@
+Mantenha nesta pasta a logo e as fotos atuais da equipe.
+
+Arquivos esperados pelo index.html:
+- apollus-logo-transparent.png
+- JALL3R.jpg
+- Liriel.png
+- Juliana.jpg
+- Bella.jpg
+- Jallerson.jpg
+- Alessandro Mattos.jpg
+
+As capas, galerias, áudios e imagens da agenda serão enviados pelo painel e armazenados no Supabase.
