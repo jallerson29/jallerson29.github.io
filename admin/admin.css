@@ -192,3 +192,132 @@ img { max-width: 100%; display: block; }
   .dialog-actions { flex-direction: column-reverse; }
   .dialog-actions .admin-btn { width: 100%; }
 }
+
+
+/* ==========================================================
+   DASHBOARD V2 — VISÃO GERAL, CALENDÁRIO E FLUXO DE PROJETOS
+========================================================== */
+.admin-tip {
+  margin-top: auto; margin-bottom: 28px; padding: 18px; border-radius: 18px;
+  background: linear-gradient(135deg, rgba(189,135,255,.15), rgba(119,228,223,.07));
+  border: 1px solid rgba(255,255,255,.08); color: #d8d2cb;
+}
+.admin-tip span { display: block; color: var(--purple); font-weight: 800; font-size: .78rem; }
+.admin-tip p { margin: 9px 0 0; font-size: .76rem; line-height: 1.55; }
+.admin-sidebar-footer { margin-top: 0; }
+.admin-btn.accent { background: #8b4de8; color: white; border-color: #8b4de8; box-shadow: 4px 4px 0 var(--purple); }
+
+.overview-actions { display: flex; justify-content: flex-end; align-items: center; gap: 18px; margin: -12px 0 22px; }
+.overview-actions > p { margin: 0; font-family: "Permanent Marker", cursive; font-size: 1rem; }
+.overview-actions > div { display: flex; gap: 12px; flex-wrap: wrap; }
+
+.overview-stats { display: grid; grid-template-columns: repeat(5, minmax(150px, 1fr)); gap: 14px; margin-bottom: 18px; }
+.overview-stat {
+  min-height: 126px; display: flex; justify-content: space-between; gap: 14px; padding: 20px;
+  border: 1px solid var(--line); border-radius: 20px; background: rgba(255,255,255,.78);
+  box-shadow: 0 12px 35px rgba(38,19,47,.07);
+}
+.overview-stat > div { display: flex; flex-direction: column; min-width: 0; }
+.overview-stat span:first-child { color: #38322d; font-size: .69rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.overview-stat strong { margin-top: 7px; font-family: "Bebas Neue", sans-serif; font-size: 2.5rem; line-height: .85; }
+.overview-stat small { margin-top: auto; color: var(--muted); font-size: .72rem; font-weight: 700; }
+.metric-icon { width: 46px; height: 46px; display: grid; place-items: center; flex: 0 0 auto; border-radius: 50%; font-size: 1.35rem; font-weight: 800; }
+.purple-stat .metric-icon { background: rgba(189,135,255,.28); }
+.cyan-stat .metric-icon { background: rgba(119,228,223,.32); }
+.yellow-stat .metric-icon { background: rgba(255,225,45,.30); }
+.pink-stat .metric-icon { background: rgba(244,168,220,.30); }
+.blue-stat .metric-icon { background: rgba(143,198,255,.30); }
+
+.overview-grid { display: grid; grid-template-columns: 1.05fr 1.15fr 1.1fr; gap: 16px; align-items: stretch; }
+.dashboard-card { border: 1px solid var(--line); border-radius: 22px; background: rgba(255,255,255,.78); box-shadow: 0 14px 40px rgba(38,19,47,.07); }
+.dashboard-card-header { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 20px 20px 12px; }
+.dashboard-card-header h2, .calendar-header h2 { margin: 0; font-size: .88rem; text-transform: uppercase; letter-spacing: .06em; }
+.dashboard-card-header button { border: 0; background: transparent; color: var(--muted); font-size: .76rem; font-weight: 800; }
+.dashboard-card-header button:hover { color: #6d36a7; }
+
+.commitments-list, .activity-list { display: grid; gap: 0; padding: 0 18px 18px; }
+.commitment-item { display: grid; grid-template-columns: 58px 1fr auto; gap: 13px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.commitment-item:last-child, .activity-item:last-child { border-bottom: 0; }
+.commitment-date { min-height: 56px; display: grid; place-items: center; align-content: center; border: 1px solid var(--line); border-left: 4px solid var(--purple); border-radius: 10px; background: white; }
+.commitment-date small { font-size: .58rem; font-weight: 800; text-transform: uppercase; }
+.commitment-date strong { font-family: "Bebas Neue", sans-serif; font-size: 1.65rem; line-height: .85; }
+.commitment-info { min-width: 0; }
+.commitment-info h3 { margin: 0 0 4px; font-size: .82rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.commitment-info p { margin: 0; color: var(--muted); font-size: .68rem; line-height: 1.5; }
+.commitment-status { padding: 5px 7px; border-radius: 999px; background: var(--paper); color: var(--muted); font-size: .57rem; font-weight: 800; text-transform: uppercase; }
+.empty-mini { padding: 28px 10px; text-align: center; color: var(--muted); font-size: .78rem; }
+
+.activity-item { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 11px; align-items: center; padding: 13px 0; border-bottom: 1px solid var(--line); }
+.activity-dot { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; background: rgba(119,228,223,.3); font-size: .82rem; }
+.activity-item h3 { margin: 0 0 3px; font-size: .78rem; line-height: 1.35; }
+.activity-item p, .activity-item time { margin: 0; color: var(--muted); font-size: .66rem; }
+.activity-item time { text-align: right; white-space: nowrap; }
+
+.calendar-card { padding: 18px; }
+.calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.calendar-header > div { display: flex; gap: 7px; }
+.calendar-header button { width: 31px; height: 31px; border: 1px solid var(--line); border-radius: 50%; background: white; font-size: 1.25rem; }
+.calendar-weekdays, .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.calendar-weekdays { margin-bottom: 5px; }
+.calendar-weekdays span { text-align: center; color: var(--muted); font-size: .58rem; font-weight: 800; }
+.calendar-day { min-height: 38px; position: relative; display: grid; place-items: center; border-radius: 10px; font-size: .72rem; border: 0; background: transparent; }
+.calendar-day.outside { color: rgba(16,16,16,.28); }
+.calendar-day.today { box-shadow: inset 0 0 0 2px var(--ink); font-weight: 800; }
+.calendar-day.has-event { background: white; cursor: pointer; }
+.calendar-day.has-event:hover { transform: translateY(-2px); box-shadow: 3px 3px 0 var(--purple); }
+.calendar-dots { position: absolute; bottom: 3px; display: flex; gap: 2px; }
+.calendar-dots i { width: 4px; height: 4px; border-radius: 50%; background: var(--purple); }
+.calendar-dots i.em_producao { background: #e5a900; }
+.calendar-dots i.disponivel { background: #29bdb7; }
+.calendar-dots i.realizado { background: #e871a9; }
+.calendar-dots i.cancelado { background: var(--danger); }
+.calendar-legend { display: flex; gap: 10px; flex-wrap: wrap; padding-top: 14px; border-top: 1px solid var(--line); margin-top: 12px; }
+.calendar-legend span { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); font-size: .58rem; }
+.calendar-legend i { width: 7px; height: 7px; border-radius: 50%; background: var(--purple); }
+.calendar-legend .legend-production { background: #e5a900; }.calendar-legend .legend-available { background: #29bdb7; }.calendar-legend .legend-done { background: #e871a9; }
+
+.kanban-wrapper { margin-top: 16px; padding-bottom: 20px; }
+.kanban-wrapper .dashboard-card-header { align-items: flex-end; }
+.kanban-wrapper .dashboard-card-header h2 { font-family: "Bebas Neue", sans-serif; font-size: 2rem; line-height: 1; }
+.project-kanban { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(230px, 1fr); gap: 12px; overflow-x: auto; padding: 4px 18px 14px; scroll-snap-type: x proximity; }
+.kanban-column { min-height: 230px; padding: 12px; border-radius: 16px; background: rgba(247,239,228,.7); border-top: 4px solid var(--purple); scroll-snap-align: start; }
+.kanban-column[data-stage="planejamento"], .kanban-column[data-stage="pre_producao"] { border-top-color: var(--yellow); }
+.kanban-column[data-stage="producao"], .kanban-column[data-stage="pos_producao"] { border-top-color: var(--cyan); }
+.kanban-column[data-stage="finalizado"], .kanban-column[data-stage="publicado"] { border-top-color: var(--pink); }
+.kanban-column.drag-over { background: rgba(189,135,255,.16); box-shadow: inset 0 0 0 2px var(--purple); }
+.kanban-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 10px; }
+.kanban-header h3 { margin: 0; font-size: .72rem; text-transform: uppercase; letter-spacing: .07em; }
+.kanban-count { min-width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; background: white; font-size: .62rem; font-weight: 800; }
+.kanban-items { display: grid; gap: 8px; min-height: 135px; }
+.kanban-card { padding: 11px; border: 1px solid var(--line); border-radius: 10px; background: white; cursor: grab; transition: .18s ease; }
+.kanban-card:hover { transform: translateY(-2px); box-shadow: 3px 3px 0 rgba(16,16,16,.15); }
+.kanban-card.dragging { opacity: .45; }
+.kanban-card h4 { margin: 0 0 4px; font-size: .75rem; }
+.kanban-card p { margin: 0; color: var(--muted); font-size: .64rem; }
+.kanban-add { width: 100%; margin-top: 10px; padding: 9px; border: 1px dashed var(--purple); border-radius: 9px; background: transparent; font-size: .68rem; font-weight: 800; }
+
+.admin-pill.stage { background: rgba(189,135,255,.18); color: #6d36a7; }
+.projects-toolbar { grid-template-columns: minmax(240px, 1fr) 190px 190px; }
+
+@media (max-width: 1350px) {
+  .overview-stats { grid-template-columns: repeat(3, 1fr); }
+  .overview-grid { grid-template-columns: 1fr 1fr; }
+  .calendar-card { grid-column: 1 / -1; }
+}
+@media (max-width: 980px) {
+  .overview-stats { grid-template-columns: repeat(2, 1fr); }
+  .overview-grid { grid-template-columns: 1fr; }
+  .calendar-card { grid-column: auto; }
+  .projects-toolbar { grid-template-columns: 1fr; }
+}
+@media (max-width: 700px) {
+  .overview-actions { align-items: stretch; flex-direction: column; }
+  .overview-actions > div { display: grid; grid-template-columns: 1fr; }
+  .overview-actions .admin-btn { width: 100%; }
+  .overview-stats { grid-template-columns: 1fr; }
+  .commitment-item { grid-template-columns: 52px 1fr; }
+  .commitment-status { grid-column: 2; justify-self: start; }
+  .activity-item { grid-template-columns: 30px 1fr; }
+  .activity-item time { grid-column: 2; text-align: left; }
+  .project-kanban { grid-auto-columns: minmax(82vw, 1fr); }
+}

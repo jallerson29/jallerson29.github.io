@@ -25,7 +25,11 @@
       </a>
 
       <nav class="admin-nav" aria-label="Navegação administrativa">
-        <button class="admin-nav-item active" type="button" data-admin-tab="projects">
+        <button class="admin-nav-item active" type="button" data-admin-tab="overview">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect></svg>
+          Visão geral
+        </button>
+        <button class="admin-nav-item" type="button" data-admin-tab="projects">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7.5h6l2 2H21v9.5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><path d="M3 7.5V6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v1.5"></path></svg>
           Projetos
         </button>
@@ -34,6 +38,11 @@
           Agenda
         </button>
       </nav>
+
+      <div class="admin-tip">
+        <span>✦ Dica rápida</span>
+        <p>Arraste projetos entre as etapas para atualizar o fluxo.</p>
+      </div>
 
       <div class="admin-sidebar-footer">
         <a href="../projetos.html" target="_blank" rel="noopener">Ver página pública ↗</a>
@@ -46,14 +55,59 @@
         <button id="sidebar-toggle" class="sidebar-toggle" type="button" aria-label="Abrir menu">☰</button>
         <div>
           <p class="admin-kicker">Painel Apollus</p>
-          <h1 id="admin-page-title">Projetos</h1>
+          <h1 id="admin-page-title">Visão geral</h1>
         </div>
         <div id="admin-user" class="admin-user"></div>
       </header>
 
       <div id="admin-global-message" class="admin-alert" hidden></div>
 
-      <section id="projects-panel" class="admin-panel active" data-panel="projects">
+      <section id="overview-panel" class="admin-panel active" data-panel="overview">
+        <div class="overview-actions">
+          <p>Ações rápidas</p>
+          <div>
+            <button id="overview-new-project" class="admin-btn primary" type="button">+ Novo projeto</button>
+            <button id="overview-new-agenda" class="admin-btn accent" type="button">▣ Novo evento</button>
+          </div>
+        </div>
+
+        <div class="overview-stats">
+          <article class="overview-stat purple-stat"><div><span>Total de projetos</span><strong id="overview-project-total">0</strong><small id="overview-project-month">Nenhum este mês</small></div><span class="metric-icon">▢</span></article>
+          <article class="overview-stat cyan-stat"><div><span>Publicados</span><strong id="overview-published-total">0</strong><small id="overview-published-rate">0% do total</small></div><span class="metric-icon">◎</span></article>
+          <article class="overview-stat yellow-stat"><div><span>Rascunhos</span><strong id="overview-draft-total">0</strong><small id="overview-draft-rate">0% do total</small></div><span class="metric-icon">✎</span></article>
+          <article class="overview-stat pink-stat"><div><span>Próximos eventos</span><strong id="overview-upcoming-total">0</strong><small>Agenda futura</small></div><span class="metric-icon">▣</span></article>
+          <article class="overview-stat blue-stat"><div><span>Datas disponíveis</span><strong id="overview-available-total">0</strong><small>Disponibilidade futura</small></div><span class="metric-icon">◷</span></article>
+        </div>
+
+        <div class="overview-grid">
+          <article class="dashboard-card commitments-card">
+            <header class="dashboard-card-header"><h2>Próximos compromissos</h2><button type="button" data-go-panel="agenda">Ver agenda →</button></header>
+            <div id="overview-commitments" class="commitments-list"></div>
+          </article>
+
+          <article class="dashboard-card activity-card">
+            <header class="dashboard-card-header"><h2>Atividade recente</h2><span>Últimas alterações</span></header>
+            <div id="overview-activity" class="activity-list"></div>
+          </article>
+
+          <article class="dashboard-card calendar-card">
+            <header class="calendar-header">
+              <h2 id="calendar-title">Calendário</h2>
+              <div><button id="calendar-prev" type="button" aria-label="Mês anterior">‹</button><button id="calendar-next" type="button" aria-label="Próximo mês">›</button></div>
+            </header>
+            <div class="calendar-weekdays"><span>DOM</span><span>SEG</span><span>TER</span><span>QUA</span><span>QUI</span><span>SEX</span><span>SÁB</span></div>
+            <div id="calendar-grid" class="calendar-grid"></div>
+            <div class="calendar-legend"><span><i class="legend-confirmed"></i>Confirmado</span><span><i class="legend-production"></i>Produção</span><span><i class="legend-available"></i>Disponível</span><span><i class="legend-done"></i>Realizado</span></div>
+          </article>
+        </div>
+
+        <article class="dashboard-card kanban-wrapper">
+          <header class="dashboard-card-header"><div><p class="admin-kicker">Fluxo interno</p><h2>Projetos por etapa</h2></div><button type="button" data-go-panel="projects">Ver todos →</button></header>
+          <div id="project-kanban" class="project-kanban"></div>
+        </article>
+      </section>
+
+      <section id="projects-panel" class="admin-panel" data-panel="projects">
         <div class="panel-toolbar">
           <div class="stats-grid">
             <div class="stat-card"><span>Total</span><strong id="project-count">0</strong></div>
@@ -62,18 +116,10 @@
           <button id="new-project-button" class="admin-btn primary" type="button">+ Novo projeto</button>
         </div>
 
-        <div class="list-toolbar">
-          <label class="search-field">
-            <span class="sr-only">Buscar projeto</span>
-            <input id="project-search" type="search" placeholder="Buscar por título ou categoria...">
-          </label>
-          <select id="project-status-filter" aria-label="Filtrar por status">
-            <option value="todos">Todos os status</option>
-            <option value="realizado">Realizado</option>
-            <option value="em_producao">Em produção</option>
-            <option value="proximo">Em breve</option>
-            <option value="arquivado">Arquivado</option>
-          </select>
+        <div class="list-toolbar projects-toolbar">
+          <label class="search-field"><span class="sr-only">Buscar projeto</span><input id="project-search" type="search" placeholder="Buscar por título ou categoria..."></label>
+          <select id="project-status-filter" aria-label="Filtrar por status"><option value="todos">Todos os status</option><option value="realizado">Realizado</option><option value="em_producao">Em produção</option><option value="proximo">Em breve</option><option value="arquivado">Arquivado</option></select>
+          <select id="project-stage-filter" aria-label="Filtrar por etapa"><option value="todos">Todas as etapas</option><option value="ideia">Ideia</option><option value="planejamento">Planejamento</option><option value="pre_producao">Pré-produção</option><option value="producao">Produção</option><option value="pos_producao">Pós-produção</option><option value="finalizado">Finalizado</option><option value="publicado">Publicado</option></select>
         </div>
 
         <div id="projects-admin-loading" class="admin-list-state">Carregando projetos...</div>
@@ -91,18 +137,8 @@
         </div>
 
         <div class="list-toolbar">
-          <label class="search-field">
-            <span class="sr-only">Buscar item de agenda</span>
-            <input id="agenda-search" type="search" placeholder="Buscar na agenda...">
-          </label>
-          <select id="agenda-status-filter" aria-label="Filtrar por status">
-            <option value="todos">Todos os status</option>
-            <option value="confirmado">Confirmado</option>
-            <option value="em_producao">Em produção</option>
-            <option value="disponivel">Disponível</option>
-            <option value="realizado">Realizado</option>
-            <option value="cancelado">Cancelado</option>
-          </select>
+          <label class="search-field"><span class="sr-only">Buscar item de agenda</span><input id="agenda-search" type="search" placeholder="Buscar na agenda..."></label>
+          <select id="agenda-status-filter" aria-label="Filtrar por status"><option value="todos">Todos os status</option><option value="confirmado">Confirmado</option><option value="em_producao">Em produção</option><option value="disponivel">Disponível</option><option value="realizado">Realizado</option><option value="cancelado">Cancelado</option></select>
         </div>
 
         <div id="agenda-admin-loading" class="admin-list-state">Carregando agenda...</div>
@@ -111,7 +147,6 @@
       </section>
     </main>
   </div>
-
   <dialog id="project-dialog" class="admin-dialog">
     <form id="project-form" class="admin-dialog-card">
       <header class="dialog-header">
@@ -127,7 +162,8 @@
         <label><span>Título *</span><input id="project-title" type="text" required maxlength="120"></label>
         <label><span>Slug *</span><input id="project-slug" type="text" required maxlength="140" placeholder="nome-do-projeto"></label>
         <label><span>Categoria *</span><select id="project-category" required><option value="musica">Música</option><option value="eventos">Eventos</option><option value="teatro">Teatro</option><option value="cultura">Cultura</option><option value="educacao">Educação</option><option value="gravadora">Selo & Gravadora</option><option value="outros">Outros</option></select></label>
-        <label><span>Status *</span><select id="project-status" required><option value="realizado">Realizado</option><option value="em_producao">Em produção</option><option value="proximo">Em breve</option><option value="arquivado">Arquivado</option></select></label>
+        <label><span>Status público *</span><select id="project-status" required><option value="realizado">Realizado</option><option value="em_producao">Em produção</option><option value="proximo">Em breve</option><option value="arquivado">Arquivado</option></select></label>
+        <label><span>Etapa interna *</span><select id="project-stage" required><option value="ideia">Ideia</option><option value="planejamento">Planejamento</option><option value="pre_producao">Pré-produção</option><option value="producao">Produção</option><option value="pos_producao">Pós-produção</option><option value="finalizado">Finalizado</option><option value="publicado">Publicado</option></select></label>
         <label><span>Data do projeto</span><input id="project-date" type="date"></label>
         <label><span>Ordem manual</span><input id="project-sort-order" type="number" value="0" step="1"></label>
       </div>

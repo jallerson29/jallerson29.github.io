@@ -14,6 +14,9 @@ const state = {
   galleryPaths: [],
   galleryToDelete: [],
   confirmHandler: null,
+  activities: [],
+  calendarDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+  draggedProjectId: null,
 };
 
 function escapeHtml(value = '') {
@@ -58,6 +61,40 @@ function statusLabel(status = '') {
     cancelado: 'Cancelado',
   };
   return map[status] || status;
+}
+
+
+function stageLabel(stage = '') {
+  const map = {
+    ideia: 'Ideia', planejamento: 'Planejamento', pre_producao: 'Pré-produção',
+    producao: 'Produção', pos_producao: 'Pós-produção', finalizado: 'Finalizado',
+    publicado: 'Publicado',
+  };
+  return map[stage] || stage || 'Ideia';
+}
+
+function inferProjectStage(project = {}) {
+  if (project.stage) return project.stage;
+  if (project.published) return 'publicado';
+  if (project.status === 'realizado') return 'finalizado';
+  if (project.status === 'em_producao') return 'producao';
+  return 'ideia';
+}
+
+function formatDateTime(dateString) {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) return '';
+  const today = new Date();
+  const sameDay = date.toDateString() === today.toDateString();
+  return sameDay
+    ? `Hoje, ${new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' }).format(date)}`
+    : new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).format(date);
+}
+
+function monthShort(dateString) {
+  const date = new Date(`${dateString}T12:00:00`);
+  return new Intl.DateTimeFormat('pt-BR', { month: 'short' }).format(date).replace('.', '').toUpperCase();
 }
 
 function setMessage(element, message = '', type = '') {
@@ -165,7 +202,8 @@ async function initDashboard() {
   document.getElementById('admin-app').hidden = false;
 
   setupDashboardEvents();
-  await Promise.all([loadProjects(), loadAgenda()]);
+  await Promise.all([loadProjects(), loadAgenda(), loadActivities()]);
+  renderOverview();
 }
 
 function setupDashboardEvents() {
@@ -183,6 +221,8 @@ function setupDashboardEvents() {
   document.querySelectorAll('.admin-nav-item').forEach((button) => button.addEventListener('click', () => sidebar.classList.remove('open')));
 
   document.getElementById('new-project-button').addEventListener('click', () => openProjectForm());
+  document.getElementById('overview-new-project').addEventListener('click', () => openProjectForm());
+  document.getElementById('overview-new-agenda').addEventListener('click', () => openAgendaForm());
   document.getElementById('new-agenda-button').addEventListener('click', () => openAgendaForm());
   document.getElementById('project-form').addEventListener('submit', saveProject);
   document.getElementById('agenda-form').addEventListener('submit', saveAgenda);
@@ -190,6 +230,7 @@ function setupDashboardEvents() {
 
   document.getElementById('project-search').addEventListener('input', renderProjectsAdmin);
   document.getElementById('project-status-filter').addEventListener('change', renderProjectsAdmin);
+  document.getElementById('project-stage-filter').addEventListener('change', renderProjectsAdmin);
   document.getElementById('agenda-search').addEventListener('input', renderAgendaAdmin);
   document.getElementById('agenda-status-filter').addEventListener('change', renderAgendaAdmin);
 
@@ -202,6 +243,18 @@ function setupDashboardEvents() {
     });
   });
 
+  document.querySelectorAll('[data-go-panel]').forEach((button) => {
+    button.addEventListener('click', () => switchPanel(button.dataset.goPanel));
+  });
+  document.getElementById('calendar-prev').addEventListener('click', () => {
+    state.calendarDate = new Date(state.calendarDate.getFullYear(), state.calendarDate.getMonth() - 1, 1);
+    renderCalendar();
+  });
+  document.getElementById('calendar-next').addEventListener('click', () => {
+    state.calendarDate = new Date(state.calendarDate.getFullYear(), state.calendarDate.getMonth() + 1, 1);
+    renderCalendar();
+  });
+
   document.getElementById('confirm-action').addEventListener('click', async () => {
     if (typeof state.confirmHandler === 'function') await state.confirmHandler();
     document.getElementById('confirm-dialog').close();
@@ -209,9 +262,12 @@ function setupDashboardEvents() {
 }
 
 function switchPanel(panel) {
+  const titles = { overview: 'Visão geral', projects: 'Projetos', agenda: 'Agenda' };
   document.querySelectorAll('[data-admin-tab]').forEach((button) => button.classList.toggle('active', button.dataset.adminTab === panel));
   document.querySelectorAll('[data-panel]').forEach((section) => section.classList.toggle('active', section.dataset.panel === panel));
-  document.getElementById('admin-page-title').textContent = panel === 'projects' ? 'Projetos' : 'Agenda';
+  document.getElementById('admin-page-title').textContent = titles[panel] || 'Painel';
+  document.querySelector('.admin-sidebar')?.classList.remove('open');
+  if (panel === 'overview') renderOverview();
 }
 
 async function loadProjects() {
@@ -231,6 +287,7 @@ async function loadProjects() {
   }
   state.projects = data || [];
   renderProjectsAdmin();
+  renderOverview();
 }
 
 function renderProjectsAdmin() {
@@ -238,11 +295,13 @@ function renderProjectsAdmin() {
   const empty = document.getElementById('projects-admin-empty');
   const search = document.getElementById('project-search').value.trim().toLowerCase();
   const status = document.getElementById('project-status-filter').value;
+  const stage = document.getElementById('project-stage-filter').value;
 
   const filtered = state.projects.filter((project) => {
     const matchesSearch = !search || `${project.title} ${project.category}`.toLowerCase().includes(search);
     const matchesStatus = status === 'todos' || project.status === status;
-    return matchesSearch && matchesStatus;
+    const matchesStage = stage === 'todos' || inferProjectStage(project) === stage;
+    return matchesSearch && matchesStatus && matchesStage;
   });
 
   document.getElementById('project-count').textContent = state.projects.length;
@@ -261,6 +320,7 @@ function renderProjectsAdmin() {
           <div class="admin-list-meta">
             <span class="admin-pill">${escapeHtml(categoryLabel(project.category))}</span>
             <span class="admin-pill">${escapeHtml(statusLabel(project.status))}</span>
+            <span class="admin-pill stage">${escapeHtml(stageLabel(inferProjectStage(project)))}</span>
             <span class="admin-pill ${project.published ? 'published' : 'draft'}">${project.published ? 'Publicado' : 'Rascunho'}</span>
             <span>${escapeHtml(formatDate(project.project_date))}</span>
           </div>
@@ -295,6 +355,7 @@ async function loadAgenda() {
   }
   state.agenda = data || [];
   renderAgendaAdmin();
+  renderOverview();
 }
 
 function renderAgendaAdmin() {
@@ -304,7 +365,7 @@ function renderAgendaAdmin() {
   const status = document.getElementById('agenda-status-filter').value;
 
   const filtered = state.agenda.filter((item) => {
-    const matchesSearch = !search || `${item.title} ${item.event_type || ''} ${item.location || ''}`.toLowerCase().includes(search);
+    const matchesSearch = !search || `${item.title} ${item.event_type || ''} ${item.location || ''} ${item.start_date || ''}`.toLowerCase().includes(search);
     const matchesStatus = status === 'todos' || item.status === status;
     return matchesSearch && matchesStatus;
   });
@@ -344,6 +405,196 @@ function renderAgendaAdmin() {
   list.querySelectorAll('[data-agenda-toggle]').forEach((button) => button.addEventListener('click', () => toggleAgendaPublished(button.dataset.agendaToggle)));
 }
 
+
+async function loadActivities() {
+  const { data, error } = await supabase
+    .from('activity_log')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(12);
+
+  if (error) {
+    console.warn('Atividade recente indisponível. Execute a migração dashboard-v2.sql.', error);
+    state.activities = [];
+    return;
+  }
+  state.activities = data || [];
+}
+
+function renderOverview() {
+  const panel = document.getElementById('overview-panel');
+  if (!panel) return;
+
+  const now = new Date();
+  const today = now.toISOString().slice(0, 10);
+  const total = state.projects.length;
+  const published = state.projects.filter((project) => project.published).length;
+  const drafts = total - published;
+  const thisMonth = state.projects.filter((project) => {
+    const created = new Date(project.created_at);
+    return created.getFullYear() === now.getFullYear() && created.getMonth() === now.getMonth();
+  }).length;
+  const upcoming = state.agenda.filter((item) => (item.end_date || item.start_date) >= today && item.status !== 'cancelado' && item.status !== 'realizado').length;
+  const available = state.agenda.filter((item) => (item.end_date || item.start_date) >= today && item.status === 'disponivel').length;
+
+  document.getElementById('overview-project-total').textContent = total;
+  document.getElementById('overview-published-total').textContent = published;
+  document.getElementById('overview-draft-total').textContent = drafts;
+  document.getElementById('overview-upcoming-total').textContent = upcoming;
+  document.getElementById('overview-available-total').textContent = available;
+  document.getElementById('overview-project-month').textContent = thisMonth ? `+${thisMonth} este mês` : 'Nenhum este mês';
+  document.getElementById('overview-published-rate').textContent = total ? `${Math.round((published / total) * 100)}% do total` : '0% do total';
+  document.getElementById('overview-draft-rate').textContent = total ? `${Math.round((drafts / total) * 100)}% do total` : '0% do total';
+
+  renderCommitments();
+  renderActivity();
+  renderCalendar();
+  renderKanban();
+}
+
+function renderCommitments() {
+  const container = document.getElementById('overview-commitments');
+  if (!container) return;
+  const today = new Date().toISOString().slice(0, 10);
+  const items = [...state.agenda]
+    .filter((item) => (item.end_date || item.start_date) >= today && !['cancelado', 'realizado'].includes(item.status))
+    .sort((a, b) => `${a.start_date}${a.start_time || ''}`.localeCompare(`${b.start_date}${b.start_time || ''}`))
+    .slice(0, 5);
+
+  if (!items.length) {
+    container.innerHTML = '<div class="empty-mini">Nenhum compromisso futuro cadastrado.</div>';
+    return;
+  }
+
+  container.innerHTML = items.map((item) => {
+    const day = new Date(`${item.start_date}T12:00:00`).getDate();
+    const details = [item.start_time?.slice(0, 5), item.location].filter(Boolean).join(' • ');
+    return `<div class="commitment-item">
+      <div class="commitment-date"><small>${escapeHtml(monthShort(item.start_date))}</small><strong>${day}</strong></div>
+      <div class="commitment-info"><h3>${escapeHtml(item.title)}</h3><p>${escapeHtml(details || item.event_type || 'Agenda Apollus')}</p></div>
+      <span class="commitment-status">${escapeHtml(statusLabel(item.status))}</span>
+    </div>`;
+  }).join('');
+}
+
+function renderActivity() {
+  const container = document.getElementById('overview-activity');
+  if (!container) return;
+  let items = state.activities;
+
+  if (!items.length) {
+    items = [
+      ...state.projects.map((item) => ({ action: 'updated', entity_type: 'project', entity_title: item.title, created_at: item.updated_at || item.created_at })),
+      ...state.agenda.map((item) => ({ action: 'updated', entity_type: 'agenda', entity_title: item.title, created_at: item.updated_at || item.created_at })),
+    ].filter((item) => item.created_at).sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 6);
+  }
+
+  if (!items.length) {
+    container.innerHTML = '<div class="empty-mini">A atividade aparecerá quando você editar projetos ou agenda.</div>';
+    return;
+  }
+
+  const actionText = { inserted: 'criado', updated: 'atualizado', deleted: 'excluído', published: 'publicado' };
+  container.innerHTML = items.slice(0, 6).map((item) => {
+    const isProject = item.entity_type === 'project';
+    const icon = isProject ? '▢' : '▣';
+    const type = isProject ? 'Projeto' : 'Evento';
+    return `<div class="activity-item">
+      <span class="activity-dot">${icon}</span>
+      <div><h3>${type} “${escapeHtml(item.entity_title || 'Sem título')}” foi ${escapeHtml(actionText[item.action] || 'atualizado')}.</h3><p>por Apollus</p></div>
+      <time>${escapeHtml(formatDateTime(item.created_at))}</time>
+    </div>`;
+  }).join('');
+}
+
+function renderCalendar() {
+  const grid = document.getElementById('calendar-grid');
+  if (!grid) return;
+  const year = state.calendarDate.getFullYear();
+  const month = state.calendarDate.getMonth();
+  document.getElementById('calendar-title').textContent = new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(state.calendarDate).replace(/^./, (c) => c.toUpperCase());
+
+  const firstDay = new Date(year, month, 1);
+  const start = new Date(year, month, 1 - firstDay.getDay());
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const cells = [];
+
+  for (let index = 0; index < 42; index += 1) {
+    const date = new Date(start);
+    date.setDate(start.getDate() + index);
+    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    const events = state.agenda.filter((item) => key >= item.start_date && key <= (item.end_date || item.start_date));
+    const dots = events.slice(0, 4).map((item) => `<i class="${escapeHtml(item.status)}"></i>`).join('');
+    const title = events.map((item) => item.title).join(', ');
+    cells.push(`<button type="button" class="calendar-day ${date.getMonth() !== month ? 'outside' : ''} ${key === todayKey ? 'today' : ''} ${events.length ? 'has-event' : ''}" data-calendar-date="${key}" title="${escapeHtml(title)}">
+      <span>${date.getDate()}</span>${events.length ? `<span class="calendar-dots">${dots}</span>` : ''}
+    </button>`);
+  }
+  grid.innerHTML = cells.join('');
+  grid.querySelectorAll('.has-event').forEach((button) => button.addEventListener('click', () => {
+    switchPanel('agenda');
+    const search = document.getElementById('agenda-search');
+    search.value = button.dataset.calendarDate;
+    renderAgendaAdmin();
+  }));
+}
+
+function renderKanban() {
+  const container = document.getElementById('project-kanban');
+  if (!container) return;
+  const stages = ['ideia', 'planejamento', 'pre_producao', 'producao', 'pos_producao', 'finalizado', 'publicado'];
+  container.innerHTML = stages.map((stage) => {
+    const projects = state.projects.filter((project) => inferProjectStage(project) === stage);
+    return `<section class="kanban-column" data-stage="${stage}">
+      <header class="kanban-header"><h3>${escapeHtml(stageLabel(stage))}</h3><span class="kanban-count">${projects.length}</span></header>
+      <div class="kanban-items">${projects.map((project) => `<article class="kanban-card" draggable="true" data-kanban-project="${escapeHtml(project.id)}"><h4>${escapeHtml(project.title)}</h4><p>${escapeHtml(categoryLabel(project.category))}</p></article>`).join('')}</div>
+      <button type="button" class="kanban-add" data-add-stage="${stage}">+ Adicionar projeto</button>
+    </section>`;
+  }).join('');
+
+  container.querySelectorAll('[data-add-stage]').forEach((button) => button.addEventListener('click', () => openProjectForm('', button.dataset.addStage)));
+  container.querySelectorAll('[data-kanban-project]').forEach((card) => {
+    card.addEventListener('click', () => openProjectForm(card.dataset.kanbanProject));
+    card.addEventListener('dragstart', () => {
+      state.draggedProjectId = card.dataset.kanbanProject;
+      card.classList.add('dragging');
+    });
+    card.addEventListener('dragend', () => {
+      state.draggedProjectId = null;
+      card.classList.remove('dragging');
+      container.querySelectorAll('.drag-over').forEach((column) => column.classList.remove('drag-over'));
+    });
+  });
+  container.querySelectorAll('.kanban-column').forEach((column) => {
+    column.addEventListener('dragover', (event) => { event.preventDefault(); column.classList.add('drag-over'); });
+    column.addEventListener('dragleave', () => column.classList.remove('drag-over'));
+    column.addEventListener('drop', async (event) => {
+      event.preventDefault();
+      column.classList.remove('drag-over');
+      if (!state.draggedProjectId) return;
+      await updateProjectStage(state.draggedProjectId, column.dataset.stage);
+    });
+  });
+}
+
+async function updateProjectStage(id, stage) {
+  const project = state.projects.find((item) => item.id === id);
+  if (!project || inferProjectStage(project) === stage) return;
+  const payload = { stage, updated_at: new Date().toISOString() };
+  if (stage === 'publicado') payload.published = true;
+  const { data, error } = await supabase.from('projects').update(payload).eq('id', id).select().single();
+  if (error) {
+    console.error(error);
+    setGlobalMessage('Não foi possível mudar a etapa. Execute a migração dashboard-v2.sql.', 'error');
+    return;
+  }
+  state.projects = state.projects.map((item) => item.id === id ? data : item);
+  renderProjectsAdmin();
+  await loadActivities();
+  renderOverview();
+  setGlobalMessage(`Projeto movido para ${stageLabel(stage)}.`, 'success');
+}
+
 function autoFillSlug() {
   if (!state.editingProject || !document.getElementById('project-slug').dataset.touched) {
     document.getElementById('project-slug').value = slugify(document.getElementById('project-title').value);
@@ -357,6 +608,7 @@ function resetProjectForm() {
   form.reset();
   document.getElementById('project-id').value = '';
   document.getElementById('project-sort-order').value = '0';
+  document.getElementById('project-stage').value = 'ideia';
   document.getElementById('project-slug').dataset.touched = '';
   document.getElementById('project-cover-current').textContent = 'Nenhuma capa enviada.';
   document.getElementById('project-audio-current').textContent = 'Nenhum áudio enviado.';
@@ -367,7 +619,7 @@ function resetProjectForm() {
   setMessage(document.getElementById('project-form-message'));
 }
 
-function openProjectForm(id = '') {
+function openProjectForm(id = '', initialStage = 'ideia') {
   resetProjectForm();
   const project = state.projects.find((item) => item.id === id);
   if (project) {
@@ -380,6 +632,7 @@ function openProjectForm(id = '') {
     document.getElementById('project-slug').dataset.touched = 'true';
     document.getElementById('project-category').value = project.category || 'musica';
     document.getElementById('project-status').value = project.status || 'realizado';
+    document.getElementById('project-stage').value = inferProjectStage(project);
     document.getElementById('project-date').value = project.project_date || '';
     document.getElementById('project-sort-order').value = project.sort_order ?? 0;
     document.getElementById('project-summary').value = project.summary || '';
@@ -395,6 +648,7 @@ function openProjectForm(id = '') {
     renderCurrentGallery();
   } else {
     document.getElementById('project-dialog-title').textContent = 'Novo projeto';
+    document.getElementById('project-stage').value = initialStage;
   }
   document.getElementById('project-dialog').showModal();
 }
@@ -492,6 +746,7 @@ async function saveProject(event) {
       slug: slugify(document.getElementById('project-slug').value),
       category: document.getElementById('project-category').value,
       status: document.getElementById('project-status').value,
+      stage: document.getElementById('project-stage').value,
       project_date: document.getElementById('project-date').value || null,
       sort_order: Number(document.getElementById('project-sort-order').value || 0),
       summary: document.getElementById('project-summary').value.trim() || null,
@@ -521,6 +776,8 @@ async function saveProject(event) {
     else state.projects.unshift(data);
 
     renderProjectsAdmin();
+    await loadActivities();
+    renderOverview();
     document.getElementById('project-dialog').close();
     setGlobalMessage('Projeto salvo com sucesso.', 'success');
   } catch (error) {
@@ -539,6 +796,8 @@ async function toggleProjectPublished(id) {
   if (error) return setGlobalMessage('Não foi possível atualizar a publicação.', 'error');
   state.projects = state.projects.map((item) => item.id === id ? data : item);
   renderProjectsAdmin();
+  await loadActivities();
+  renderOverview();
 }
 
 function confirmAction(title, text, handler) {
@@ -558,6 +817,8 @@ function confirmDeleteProject(id) {
     await removeFiles(paths);
     state.projects = state.projects.filter((item) => item.id !== id);
     renderProjectsAdmin();
+    await loadActivities();
+    renderOverview();
     setGlobalMessage('Projeto excluído.', 'success');
   });
 }
@@ -651,6 +912,8 @@ async function saveAgenda(event) {
     state.agenda.sort((a, b) => b.start_date.localeCompare(a.start_date));
 
     renderAgendaAdmin();
+    await loadActivities();
+    renderOverview();
     document.getElementById('agenda-form-dialog').close();
     setGlobalMessage('Agenda atualizada com sucesso.', 'success');
   } catch (error) {
@@ -669,6 +932,8 @@ async function toggleAgendaPublished(id) {
   if (error) return setGlobalMessage('Não foi possível atualizar a publicação.', 'error');
   state.agenda = state.agenda.map((agendaItem) => agendaItem.id === id ? data : agendaItem);
   renderAgendaAdmin();
+  await loadActivities();
+  renderOverview();
 }
 
 function confirmDeleteAgenda(id) {
@@ -680,6 +945,8 @@ function confirmDeleteAgenda(id) {
     await removeFiles([item.image_path]);
     state.agenda = state.agenda.filter((agendaItem) => agendaItem.id !== id);
     renderAgendaAdmin();
+    await loadActivities();
+    renderOverview();
     setGlobalMessage('Data excluída.', 'success');
   });
 }
