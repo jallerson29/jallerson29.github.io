@@ -290,16 +290,44 @@
       <input id="agenda-id" type="hidden">
       <div class="form-grid two-columns">
         <label><span>Título *</span><input id="agenda-title" type="text" required maxlength="120"></label>
-        <label><span>Tipo</span><input id="agenda-type" type="text" maxlength="60" placeholder="Evento, lançamento, disponibilidade..."></label>
+        <label>
+          <span>Tipo</span>
+          <input id="agenda-type" type="text" list="agenda-type-options" maxlength="60" placeholder="Evento, reunião, lançamento...">
+          <datalist id="agenda-type-options">
+            <option value="Reunião"></option>
+            <option value="Evento"></option>
+            <option value="Lançamento"></option>
+            <option value="Gravação"></option>
+            <option value="Ensaio"></option>
+            <option value="Curso ou aula"></option>
+            <option value="Disponibilidade"></option>
+          </datalist>
+        </label>
         <label><span>Data inicial *</span><input id="agenda-start-date" type="date" required></label>
         <label><span>Data final</span><input id="agenda-end-date" type="date"></label>
-        <label><span>Horário</span><input id="agenda-start-time" type="time"></label>
+        <label><span>Horário inicial</span><input id="agenda-start-time" type="time"></label>
+        <label><span>Horário final</span><input id="agenda-end-time" type="time"></label>
         <label><span>Status *</span><select id="agenda-status" required><option value="confirmado">Confirmado</option><option value="em_producao">Em produção</option><option value="disponivel">Disponível</option><option value="realizado">Realizado</option><option value="cancelado">Cancelado</option></select></label>
+        <label><span>Fuso horário</span><select id="agenda-timezone"><option value="America/Sao_Paulo">Brasília / Curitiba</option></select></label>
       </div>
 
-      <label><span>Local</span><input id="agenda-location" type="text" maxlength="160"></label>
+      <label><span>Local</span><input id="agenda-location" type="text" maxlength="160" placeholder="Endereço, sala ou Online"></label>
       <label><span>Descrição</span><textarea id="agenda-description" rows="5"></textarea></label>
-      <label><span>Link externo</span><input id="agenda-external-url" type="url" placeholder="https://..."></label>
+      <label><span>Link externo ou da reunião</span><input id="agenda-external-url" type="url" placeholder="https://meet.google.com/... ou https://..."></label>
+
+      <section id="meeting-invite-panel" class="meeting-invite-panel" hidden>
+        <div class="meeting-invite-header">
+          <div>
+            <span class="meeting-kicker">Reunião Apollus</span>
+            <h3>Quem deve receber o convite?</h3>
+            <p>Cada pessoa selecionada recebe um e-mail individual e um arquivo de calendário (.ics).</p>
+          </div>
+          <button id="meeting-select-all" class="mini-action" type="button">Selecionar todos</button>
+        </div>
+        <div id="meeting-invitee-list" class="meeting-invitee-list"></div>
+        <label class="checkbox-label meeting-send-option"><input id="agenda-send-invites" type="checkbox" checked><span>Enviar ou reenviar os convites ao salvar</span></label>
+      </section>
+
       <label class="upload-box"><span>Imagem opcional</span><input id="agenda-image-file" type="file" accept="image/jpeg,image/png,image/webp"><small id="agenda-image-current">Nenhuma imagem enviada.</small></label>
 
       <div class="form-checks">

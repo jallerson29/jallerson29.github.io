@@ -10,6 +10,8 @@ const state = {
   projects: [],
   agenda: [],
   playlists: [],
+  adminContacts: [],
+  meetingInvites: [],
   editingProject: null,
   editingPlaylist: null,
   editingAgenda: null,
@@ -212,7 +214,8 @@ async function initDashboard() {
   document.getElementById('admin-app').hidden = false;
 
   setupDashboardEvents();
-  await Promise.all([loadProjects(), loadAgenda(), loadPlaylists(), loadActivities()]);
+  await Promise.all([loadProjects(), loadAgenda(), loadPlaylists(), loadActivities(), loadAdminContacts()]);
+  renderMeetingInviteeOptions();
   renderOverview();
 }
 
@@ -239,6 +242,8 @@ function setupDashboardEvents() {
   document.getElementById('project-form').addEventListener('submit', saveProject);
   document.getElementById('playlist-form').addEventListener('submit', savePlaylist);
   document.getElementById('agenda-form').addEventListener('submit', saveAgenda);
+  document.getElementById('agenda-type').addEventListener('input', updateMeetingFields);
+  document.getElementById('meeting-select-all').addEventListener('click', toggleAllMeetingInvitees);
   document.getElementById('project-title').addEventListener('input', autoFillSlug);
 
   document.getElementById('project-search').addEventListener('input', renderProjectsAdmin);
@@ -504,6 +509,24 @@ async function savePlaylist(event) {
     const { data, error } = await query;
     if (error) throw error;
 
+    let emailResult = null;
+    let emailError = null;
+    if (meeting) {
+      const selectedIds = selectedMeetingInviteeIds();
+      if (!selectedIds.length) throw new Error('Selecione pelo menos uma pessoa para a reunião.');
+      await syncMeetingInvites(data.id, selectedIds);
+      if (document.getElementById('agenda-send-invites').checked) {
+        try {
+          emailResult = await sendMeetingInvites(data.id, old ? 'updated' : 'created');
+        } catch (notificationError) {
+          console.error('Erro ao enviar convites:', notificationError);
+          emailError = notificationError;
+        }
+      }
+    } else {
+      await syncMeetingInvites(data.id, []);
+    }
+
     await removeFiles(filesToDelete);
     if (old) state.playlists = state.playlists.map((item) => item.id === data.id ? data : item);
     else state.playlists.unshift(data);
@@ -549,21 +572,47 @@ function confirmDeletePlaylist(id) {
   });
 }
 
+async function loadAdminContacts() {
+  const { data, error } = await supabase
+    .from('admin_contacts')
+    .select('user_id, name, email, active')
+    .eq('active', true)
+    .order('name', { ascending: true });
+
+  if (error) {
+    console.warn('Contatos administrativos indisponíveis. Execute meetings-v1.sql.', error);
+    state.adminContacts = [];
+    return;
+  }
+  state.adminContacts = data || [];
+}
+
 async function loadAgenda() {
   const loading = document.getElementById('agenda-admin-loading');
-  const { data, error } = await supabase
-    .from('agenda_events')
-    .select('*')
-    .order('start_date', { ascending: false })
-    .order('start_time', { ascending: true, nullsFirst: false });
+  const [agendaResult, invitesResult] = await Promise.all([
+    supabase
+      .from('agenda_events')
+      .select('*')
+      .order('start_date', { ascending: false })
+      .order('start_time', { ascending: true, nullsFirst: false }),
+    supabase
+      .from('meeting_invites')
+      .select('*')
+      .order('created_at', { ascending: true }),
+  ]);
 
   loading.hidden = true;
-  if (error) {
-    console.error(error);
+  if (agendaResult.error) {
+    console.error(agendaResult.error);
     setGlobalMessage('Não foi possível carregar a agenda.', 'error');
     return;
   }
-  state.agenda = data || [];
+  if (invitesResult.error) {
+    console.warn('Convites de reunião indisponíveis. Execute meetings-v1.sql.', invitesResult.error);
+  }
+
+  state.agenda = agendaResult.data || [];
+  state.meetingInvites = invitesResult.data || [];
   renderAgendaAdmin();
   renderOverview();
 }
@@ -587,6 +636,7 @@ function renderAgendaAdmin() {
 
   list.innerHTML = filtered.map((item) => {
     const image = mediaUrl(item.image_path);
+    const inviteCount = state.meetingInvites.filter((invite) => invite.agenda_event_id === item.id).length;
     return `
       <article class="admin-list-item" data-agenda-id="${escapeHtml(item.id)}">
         <div class="admin-list-thumb">
@@ -595,7 +645,8 @@ function renderAgendaAdmin() {
         <div class="admin-list-main">
           <h3>${escapeHtml(item.title)}</h3>
           <div class="admin-list-meta">
-            <span class="admin-pill">${escapeHtml(item.event_type || 'Agenda')}</span>
+            <span class="admin-pill${item.is_meeting ? ' meeting-pill' : ''}">${escapeHtml(item.event_type || (item.is_meeting ? 'Reunião' : 'Agenda'))}</span>
+            ${item.is_meeting ? `<span class="admin-pill invite-pill">${inviteCount} convidado${inviteCount === 1 ? '' : 's'}</span>` : ''}
             <span class="admin-pill">${escapeHtml(statusLabel(item.status))}</span>
             <span class="admin-pill ${item.published ? 'published' : 'draft'}">${item.published ? 'Publicado' : 'Oculto'}</span>
             <span>${escapeHtml(formatDate(item.start_date))}${item.start_time ? ` • ${escapeHtml(item.start_time.slice(0, 5))}` : ''}</span>
@@ -1040,12 +1091,104 @@ function confirmDeleteProject(id) {
   });
 }
 
+function isMeetingType(value = '') {
+  return value.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') === 'reuniao';
+}
+
+function meetingInviteIdsForEvent(eventId) {
+  return state.meetingInvites
+    .filter((invite) => invite.agenda_event_id === eventId)
+    .map((invite) => invite.invitee_user_id);
+}
+
+function renderMeetingInviteeOptions(selectedIds = []) {
+  const container = document.getElementById('meeting-invitee-list');
+  if (!container) return;
+  const selected = new Set(selectedIds);
+
+  if (!state.adminContacts.length) {
+    container.innerHTML = '<p class="meeting-empty">Nenhum contato carregado. Execute o arquivo <strong>meetings-v1.sql</strong>.</p>';
+    return;
+  }
+
+  container.innerHTML = state.adminContacts.map((contact) => `
+    <label class="meeting-invitee-option">
+      <input type="checkbox" name="meeting-invitee" value="${escapeHtml(contact.user_id)}" ${selected.has(contact.user_id) ? 'checked' : ''}>
+      <span class="meeting-avatar">${escapeHtml((contact.name || contact.email).slice(0, 1).toUpperCase())}</span>
+      <span class="meeting-person"><strong>${escapeHtml(contact.name)}</strong><small>${escapeHtml(contact.email)}</small></span>
+    </label>
+  `).join('');
+}
+
+function selectedMeetingInviteeIds() {
+  return [...document.querySelectorAll('input[name="meeting-invitee"]:checked')].map((input) => input.value);
+}
+
+function toggleAllMeetingInvitees() {
+  const inputs = [...document.querySelectorAll('input[name="meeting-invitee"]')];
+  const shouldCheck = inputs.some((input) => !input.checked);
+  inputs.forEach((input) => { input.checked = shouldCheck; });
+  document.getElementById('meeting-select-all').textContent = shouldCheck ? 'Limpar seleção' : 'Selecionar todos';
+}
+
+function updateMeetingFields() {
+  const panel = document.getElementById('meeting-invite-panel');
+  const isMeeting = isMeetingType(document.getElementById('agenda-type').value);
+  panel.hidden = !isMeeting;
+  document.getElementById('agenda-start-time').required = isMeeting;
+  document.getElementById('agenda-end-time').required = isMeeting;
+  document.getElementById('agenda-save').textContent = isMeeting ? 'Salvar reunião' : 'Salvar data';
+
+  if (isMeeting && !state.editingAgenda) {
+    document.getElementById('agenda-published').checked = false;
+  }
+}
+
+async function syncMeetingInvites(eventId, selectedIds) {
+  const contacts = state.adminContacts.filter((contact) => selectedIds.includes(contact.user_id));
+  const { error: deleteError } = await supabase.from('meeting_invites').delete().eq('agenda_event_id', eventId);
+  if (deleteError) throw deleteError;
+
+  let inserted = [];
+  if (contacts.length) {
+    const rows = contacts.map((contact) => ({
+      agenda_event_id: eventId,
+      invitee_user_id: contact.user_id,
+      invitee_name: contact.name,
+      invitee_email: contact.email,
+      delivery_status: 'pending',
+    }));
+    const { data, error } = await supabase.from('meeting_invites').insert(rows).select();
+    if (error) throw error;
+    inserted = data || [];
+  }
+
+  state.meetingInvites = [
+    ...state.meetingInvites.filter((invite) => invite.agenda_event_id !== eventId),
+    ...inserted,
+  ];
+  return inserted;
+}
+
+async function sendMeetingInvites(eventId, action = 'created') {
+  const { data, error } = await supabase.functions.invoke('send-meeting-invite', {
+    body: { event_id: eventId, action },
+  });
+  if (error) throw error;
+  return data || { sent: 0, failed: 0 };
+}
+
 function resetAgendaForm() {
   document.getElementById('agenda-form').reset();
   document.getElementById('agenda-id').value = '';
   document.getElementById('agenda-published').checked = true;
+  document.getElementById('agenda-send-invites').checked = true;
+  document.getElementById('meeting-invite-panel').hidden = true;
+  document.getElementById('meeting-select-all').textContent = 'Selecionar todos';
   document.getElementById('agenda-image-current').textContent = 'Nenhuma imagem enviada.';
   state.editingAgenda = null;
+  renderMeetingInviteeOptions();
+  updateMeetingFields();
   setMessage(document.getElementById('agenda-form-message'));
 }
 
@@ -1061,15 +1204,20 @@ function openAgendaForm(id = '') {
     document.getElementById('agenda-start-date').value = item.start_date || '';
     document.getElementById('agenda-end-date').value = item.end_date || '';
     document.getElementById('agenda-start-time').value = item.start_time?.slice(0, 5) || '';
+    document.getElementById('agenda-end-time').value = item.end_time?.slice(0, 5) || '';
+    document.getElementById('agenda-timezone').value = item.timezone || 'America/Sao_Paulo';
     document.getElementById('agenda-status').value = item.status || 'confirmado';
     document.getElementById('agenda-location').value = item.location || '';
     document.getElementById('agenda-description').value = item.description || '';
     document.getElementById('agenda-external-url').value = item.external_url || '';
     document.getElementById('agenda-published').checked = Boolean(item.published);
     document.getElementById('agenda-image-current').textContent = item.image_path ? 'Imagem atual preservada.' : 'Nenhuma imagem enviada.';
+    document.getElementById('agenda-send-invites').checked = false;
+    renderMeetingInviteeOptions(meetingInviteIdsForEvent(item.id));
   } else {
     document.getElementById('agenda-dialog-title').textContent = 'Nova data';
   }
+  updateMeetingFields();
   document.getElementById('agenda-form-dialog').showModal();
 }
 
@@ -1100,14 +1248,22 @@ async function saveAgenda(event) {
 
     const startDate = document.getElementById('agenda-start-date').value;
     const endDate = document.getElementById('agenda-end-date').value || null;
+    const startTime = document.getElementById('agenda-start-time').value || null;
+    const endTime = document.getElementById('agenda-end-time').value || null;
+    const meeting = isMeetingType(document.getElementById('agenda-type').value);
     if (endDate && endDate < startDate) throw new Error('A data final não pode ser anterior à inicial.');
+    if (meeting && (!startTime || !endTime)) throw new Error('Informe os horários inicial e final da reunião.');
+    if (meeting && (!endDate || endDate === startDate) && endTime <= startTime) throw new Error('O horário final deve ser posterior ao inicial.');
 
     const payload = {
       title: document.getElementById('agenda-title').value.trim(),
       event_type: document.getElementById('agenda-type').value.trim() || null,
       start_date: startDate,
       end_date: endDate,
-      start_time: document.getElementById('agenda-start-time').value || null,
+      start_time: startTime,
+      end_time: endTime,
+      timezone: document.getElementById('agenda-timezone').value || 'America/Sao_Paulo',
+      is_meeting: meeting,
       status: document.getElementById('agenda-status').value,
       location: document.getElementById('agenda-location').value.trim() || null,
       description: document.getElementById('agenda-description').value.trim() || null,
@@ -1132,7 +1288,14 @@ async function saveAgenda(event) {
     await loadActivities();
     renderOverview();
     document.getElementById('agenda-form-dialog').close();
-    setGlobalMessage('Agenda atualizada com sucesso.', 'success');
+    if (emailError) {
+      setGlobalMessage('Reunião salva, mas o envio dos e-mails falhou. Confira a Edge Function e o Resend.', 'error');
+    } else if (emailResult) {
+      const failedText = emailResult.failed ? ` • ${emailResult.failed} falha(s)` : '';
+      setGlobalMessage(`Reunião salva e ${emailResult.sent || 0} convite(s) enviado(s)${failedText}.`, emailResult.failed ? 'error' : 'success');
+    } else {
+      setGlobalMessage(meeting ? 'Reunião salva sem reenviar os convites.' : 'Agenda atualizada com sucesso.', 'success');
+    }
   } catch (error) {
     console.error(error);
     await removeFiles(uploadedNow);
