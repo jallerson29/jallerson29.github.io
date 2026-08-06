@@ -211,7 +211,7 @@ img { max-width: 100%; display: block; }
 .overview-actions > p { margin: 0; font-family: "Permanent Marker", cursive; font-size: 1rem; }
 .overview-actions > div { display: flex; gap: 12px; flex-wrap: wrap; }
 
-.overview-stats { display: grid; grid-template-columns: repeat(5, minmax(150px, 1fr)); gap: 14px; margin-bottom: 18px; }
+.overview-stats { display: grid; grid-template-columns: repeat(6, minmax(140px, 1fr)); gap: 14px; margin-bottom: 18px; }
 .overview-stat {
   min-height: 126px; display: flex; justify-content: space-between; gap: 14px; padding: 20px;
   border: 1px solid var(--line); border-radius: 20px; background: rgba(255,255,255,.78);
@@ -227,6 +227,7 @@ img { max-width: 100%; display: block; }
 .yellow-stat .metric-icon { background: rgba(255,225,45,.30); }
 .pink-stat .metric-icon { background: rgba(244,168,220,.30); }
 .blue-stat .metric-icon { background: rgba(143,198,255,.30); }
+.green-stat .metric-icon { background: rgba(30,215,96,.22); }
 
 .overview-grid { display: grid; grid-template-columns: 1.05fr 1.15fr 1.1fr; gap: 16px; align-items: stretch; }
 .dashboard-card { border: 1px solid var(--line); border-radius: 22px; background: rgba(255,255,255,.78); box-shadow: 0 14px 40px rgba(38,19,47,.07); }
@@ -320,4 +321,41 @@ img { max-width: 100%; display: block; }
   .activity-item { grid-template-columns: 30px 1fr; }
   .activity-item time { grid-column: 2; text-align: left; }
   .project-kanban { grid-auto-columns: minmax(82vw, 1fr); }
+}
+
+
+/* ==========================================================
+   PLAYLISTS E STREAMINGS
+========================================================== */
+.admin-btn.playlist-accent {
+  background: #1ed760;
+  color: var(--ink);
+  border-color: var(--ink);
+  box-shadow: 4px 4px 0 var(--cyan);
+}
+.playlists-toolbar { grid-template-columns: minmax(260px, 1fr) 240px; }
+.playlist-admin-intro {
+  margin-bottom: 20px;
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-left: 5px solid #1ed760;
+  border-radius: 16px;
+  background: rgba(255,255,255,.64);
+}
+.playlist-admin-intro strong { display: block; margin-bottom: 5px; }
+.playlist-admin-intro p { margin: 0; color: var(--muted); font-size: .84rem; line-height: 1.6; }
+.playlist-thumb.spotify .admin-list-placeholder { background: #1ed760; }
+.playlist-thumb.youtube .admin-list-placeholder { background: #ff6666; }
+.playlist-thumb.apple_music .admin-list-placeholder { background: var(--pink); }
+.playlist-thumb.deezer .admin-list-placeholder { background: var(--yellow); }
+.playlist-thumb.soundcloud .admin-list-placeholder { background: #ff9d45; }
+.platform-pill.spotify { background: rgba(30,215,96,.18); color: #08752e; }
+.platform-pill.youtube { background: rgba(255,0,0,.10); color: #a00000; }
+.platform-pill.apple_music { background: rgba(244,168,220,.25); color: #923a70; }
+.platform-pill.deezer { background: rgba(255,225,45,.27); color: #705d00; }
+.platform-pill.soundcloud { background: rgba(255,130,40,.18); color: #9b4300; }
+.playlist-admin-item .admin-list-actions a.icon-button { text-decoration: none; font-size: 1.15rem; font-weight: 800; }
+
+@media (max-width: 980px) {
+  .playlists-toolbar { grid-template-columns: 1fr; }
 }

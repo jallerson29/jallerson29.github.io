@@ -271,6 +271,122 @@ function setupProjectFilters() {
   });
 }
 
+function streamingPlatformLabel(platform = '') {
+  const labels = {
+    spotify: 'Spotify', youtube: 'YouTube Music', apple_music: 'Apple Music',
+    deezer: 'Deezer', soundcloud: 'SoundCloud', outros: 'Streaming',
+  };
+  return labels[platform] || 'Streaming';
+}
+
+function spotifyEmbedUrl(value = '') {
+  try {
+    const url = new URL(value);
+    if (!['open.spotify.com', 'spotify.com', 'www.spotify.com'].includes(url.hostname)) return '';
+    const parts = url.pathname.split('/').filter(Boolean);
+    const supported = ['playlist', 'album', 'artist', 'track', 'show', 'episode'];
+    const typeIndex = parts.findIndex((part) => supported.includes(part));
+    if (typeIndex < 0 || !parts[typeIndex + 1]) return '';
+    return `https://open.spotify.com/embed/${parts[typeIndex]}/${encodeURIComponent(parts[typeIndex + 1])}?utm_source=generator&theme=0`;
+  } catch { return ''; }
+}
+
+function youtubePlaylistEmbedUrl(value = '') {
+  try {
+    const url = new URL(value);
+    if (!['youtube.com', 'www.youtube.com', 'music.youtube.com', 'youtu.be'].includes(url.hostname)) return '';
+    const playlistId = url.searchParams.get('list');
+    if (!playlistId) return '';
+    return `https://www.youtube.com/embed?listType=playlist&list=${encodeURIComponent(playlistId)}`;
+  } catch { return ''; }
+}
+
+function appleMusicEmbedUrl(value = '') {
+  try {
+    const url = new URL(value);
+    if (!url.hostname.endsWith('music.apple.com')) return '';
+    url.hostname = 'embed.music.apple.com';
+    return url.href;
+  } catch { return ''; }
+}
+
+function resolvePlaylistEmbed(playlist) {
+  const manual = safeExternalUrl(playlist.embed_url);
+  if (manual) return manual;
+  if (playlist.platform === 'spotify') return spotifyEmbedUrl(playlist.playlist_url);
+  if (playlist.platform === 'youtube') return youtubePlaylistEmbedUrl(playlist.playlist_url);
+  if (playlist.platform === 'apple_music') return appleMusicEmbedUrl(playlist.playlist_url);
+  return '';
+}
+
+function renderStreamingPlaylist(playlist) {
+  const url = safeExternalUrl(playlist.playlist_url);
+  const embed = resolvePlaylistEmbed(playlist);
+  const cover = mediaUrl(playlist.cover_path);
+  const title = escapeHtml(playlist.title);
+  const platform = escapeHtml(streamingPlatformLabel(playlist.platform));
+  let media = '';
+
+  if (embed) {
+    const height = playlist.platform === 'spotify' ? 352 : 320;
+    media = `<iframe src="${escapeHtml(embed)}" title="${title} no ${platform}" height="${height}" loading="lazy" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" allowfullscreen></iframe>`;
+  } else if (cover) {
+    media = `<img class="streaming-cover" src="${escapeHtml(cover)}" alt="Capa da playlist ${title}" loading="lazy">`;
+  } else {
+    media = `<div class="streaming-placeholder"><span>▶</span><strong>${platform}</strong></div>`;
+  }
+
+  return `<article class="streaming-card reveal ${playlist.featured ? 'featured' : ''}">
+    <div class="streaming-card-top">
+      <span class="streaming-platform ${escapeHtml(playlist.platform)}">${platform}</span>
+      ${playlist.featured ? '<span class="streaming-featured">Destaque</span>' : ''}
+    </div>
+    <div class="streaming-media">${media}</div>
+    <div class="streaming-copy">
+      ${playlist.artist_name ? `<p class="streaming-curator">Por ${escapeHtml(playlist.artist_name)}</p>` : ''}
+      <h3>${title}</h3>
+      ${playlist.description ? `<p>${escapeHtml(playlist.description)}</p>` : ''}
+      ${url ? `<a class="streaming-action" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">Abrir no ${platform} ↗</a>` : ''}
+    </div>
+  </article>`;
+}
+
+async function loadStreamingPlaylists() {
+  await ensureSupabase();
+  const grid = document.getElementById('streaming-playlists-grid');
+  const loading = document.getElementById('playlists-loading');
+  const errorState = document.getElementById('playlists-error');
+  const emptyState = document.getElementById('playlists-empty');
+  if (!grid) return;
+
+  if (!isSupabaseConfigured || !supabase) {
+    loading.hidden = true;
+    errorState.hidden = false;
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from('streaming_playlists')
+    .select('*')
+    .eq('published', true)
+    .order('featured', { ascending: false })
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: false });
+
+  loading.hidden = true;
+  if (error) {
+    console.error('Erro ao carregar playlists:', error);
+    errorState.hidden = false;
+    return;
+  }
+  if (!data?.length) {
+    emptyState.hidden = false;
+    return;
+  }
+  grid.innerHTML = data.map(renderStreamingPlaylist).join('');
+  observeReveals(grid);
+}
+
 let agendaEvents = [];
 let calendarDate = new Date();
 calendarDate.setDate(1);
@@ -602,6 +718,7 @@ async function loadProjectDetail() {
 
 if (page === 'projects') {
   loadProjectsPage();
+  loadStreamingPlaylists();
   loadAgenda();
 }
 

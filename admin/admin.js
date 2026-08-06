@@ -9,7 +9,9 @@ const adminPage = document.body.dataset.adminPage;
 const state = {
   projects: [],
   agenda: [],
+  playlists: [],
   editingProject: null,
+  editingPlaylist: null,
   editingAgenda: null,
   galleryPaths: [],
   galleryToDelete: [],
@@ -52,6 +54,14 @@ function categoryLabel(category = '') {
     educacao: 'Educação', gravadora: 'Selo & Gravadora', outros: 'Outros',
   };
   return map[category] || category;
+}
+
+function platformLabel(platform = '') {
+  const map = {
+    spotify: 'Spotify', youtube: 'YouTube Music', apple_music: 'Apple Music',
+    deezer: 'Deezer', soundcloud: 'SoundCloud', outros: 'Outro streaming',
+  };
+  return map[platform] || platform || 'Streaming';
 }
 
 function statusLabel(status = '') {
@@ -202,7 +212,7 @@ async function initDashboard() {
   document.getElementById('admin-app').hidden = false;
 
   setupDashboardEvents();
-  await Promise.all([loadProjects(), loadAgenda(), loadActivities()]);
+  await Promise.all([loadProjects(), loadAgenda(), loadPlaylists(), loadActivities()]);
   renderOverview();
 }
 
@@ -224,7 +234,10 @@ function setupDashboardEvents() {
   document.getElementById('overview-new-project').addEventListener('click', () => openProjectForm());
   document.getElementById('overview-new-agenda').addEventListener('click', () => openAgendaForm());
   document.getElementById('new-agenda-button').addEventListener('click', () => openAgendaForm());
+  document.getElementById('new-playlist-button').addEventListener('click', () => openPlaylistForm());
+  document.getElementById('overview-new-playlist').addEventListener('click', () => openPlaylistForm());
   document.getElementById('project-form').addEventListener('submit', saveProject);
+  document.getElementById('playlist-form').addEventListener('submit', savePlaylist);
   document.getElementById('agenda-form').addEventListener('submit', saveAgenda);
   document.getElementById('project-title').addEventListener('input', autoFillSlug);
 
@@ -233,6 +246,8 @@ function setupDashboardEvents() {
   document.getElementById('project-stage-filter').addEventListener('change', renderProjectsAdmin);
   document.getElementById('agenda-search').addEventListener('input', renderAgendaAdmin);
   document.getElementById('agenda-status-filter').addEventListener('change', renderAgendaAdmin);
+  document.getElementById('playlist-search').addEventListener('input', renderPlaylistsAdmin);
+  document.getElementById('playlist-platform-filter').addEventListener('change', renderPlaylistsAdmin);
 
   document.querySelectorAll('[data-admin-close]').forEach((button) => {
     button.addEventListener('click', () => button.closest('dialog')?.close());
@@ -262,7 +277,7 @@ function setupDashboardEvents() {
 }
 
 function switchPanel(panel) {
-  const titles = { overview: 'Visão geral', projects: 'Projetos', agenda: 'Agenda' };
+  const titles = { overview: 'Visão geral', projects: 'Projetos', playlists: 'Playlists', agenda: 'Agenda' };
   document.querySelectorAll('[data-admin-tab]').forEach((button) => button.classList.toggle('active', button.dataset.adminTab === panel));
   document.querySelectorAll('[data-panel]').forEach((section) => section.classList.toggle('active', section.dataset.panel === panel));
   document.getElementById('admin-page-title').textContent = titles[panel] || 'Painel';
@@ -337,6 +352,201 @@ function renderProjectsAdmin() {
   list.querySelectorAll('[data-project-edit]').forEach((button) => button.addEventListener('click', () => openProjectForm(button.dataset.projectEdit)));
   list.querySelectorAll('[data-project-delete]').forEach((button) => button.addEventListener('click', () => confirmDeleteProject(button.dataset.projectDelete)));
   list.querySelectorAll('[data-project-toggle]').forEach((button) => button.addEventListener('click', () => toggleProjectPublished(button.dataset.projectToggle)));
+}
+
+async function loadPlaylists() {
+  const loading = document.getElementById('playlists-admin-loading');
+  const { data, error } = await supabase
+    .from('streaming_playlists')
+    .select('*')
+    .order('featured', { ascending: false })
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: false });
+
+  if (loading) loading.hidden = true;
+  if (error) {
+    console.error(error);
+    setGlobalMessage('Não foi possível carregar as playlists. Execute playlists-v1.sql.', 'error');
+    return;
+  }
+  state.playlists = data || [];
+  renderPlaylistsAdmin();
+  renderOverview();
+}
+
+function renderPlaylistsAdmin() {
+  const list = document.getElementById('playlists-admin-list');
+  const empty = document.getElementById('playlists-admin-empty');
+  if (!list || !empty) return;
+
+  const search = document.getElementById('playlist-search').value.trim().toLowerCase();
+  const platform = document.getElementById('playlist-platform-filter').value;
+  const filtered = state.playlists.filter((playlist) => {
+    const haystack = `${playlist.title} ${playlist.artist_name || ''} ${playlist.platform}`.toLowerCase();
+    return (!search || haystack.includes(search)) && (platform === 'todos' || playlist.platform === platform);
+  });
+
+  document.getElementById('playlist-count').textContent = state.playlists.length;
+  document.getElementById('playlist-published-count').textContent = state.playlists.filter((item) => item.published).length;
+  empty.hidden = filtered.length !== 0;
+
+  list.innerHTML = filtered.map((playlist) => {
+    const cover = mediaUrl(playlist.cover_path);
+    return `
+      <article class="admin-list-item playlist-admin-item" data-playlist-id="${escapeHtml(playlist.id)}">
+        <div class="admin-list-thumb playlist-thumb ${escapeHtml(playlist.platform)}">
+          ${cover ? `<img src="${escapeHtml(cover)}" alt="">` : `<div class="admin-list-placeholder">${escapeHtml(platformLabel(playlist.platform))}</div>`}
+        </div>
+        <div class="admin-list-main">
+          <h3>${escapeHtml(playlist.title)}</h3>
+          <div class="admin-list-meta">
+            <span class="admin-pill platform-pill ${escapeHtml(playlist.platform)}">${escapeHtml(platformLabel(playlist.platform))}</span>
+            ${playlist.artist_name ? `<span>${escapeHtml(playlist.artist_name)}</span>` : ''}
+            <span class="admin-pill ${playlist.published ? 'published' : 'draft'}">${playlist.published ? 'Publicada' : 'Rascunho'}</span>
+            ${playlist.featured ? '<span class="admin-pill stage">Destaque</span>' : ''}
+          </div>
+        </div>
+        <div class="admin-list-actions">
+          <a class="icon-button" href="${escapeHtml(playlist.playlist_url)}" target="_blank" rel="noopener noreferrer" title="Abrir no streaming">↗</a>
+          <button class="icon-button" type="button" data-playlist-toggle="${escapeHtml(playlist.id)}" title="${playlist.published ? 'Ocultar' : 'Publicar'}">${playlist.published ? eyeOffIcon() : eyeIcon()}</button>
+          <button class="icon-button" type="button" data-playlist-edit="${escapeHtml(playlist.id)}" title="Editar">${editIcon()}</button>
+          <button class="icon-button delete" type="button" data-playlist-delete="${escapeHtml(playlist.id)}" title="Excluir">${trashIcon()}</button>
+        </div>
+      </article>`;
+  }).join('');
+
+  list.querySelectorAll('[data-playlist-edit]').forEach((button) => button.addEventListener('click', () => openPlaylistForm(button.dataset.playlistEdit)));
+  list.querySelectorAll('[data-playlist-delete]').forEach((button) => button.addEventListener('click', () => confirmDeletePlaylist(button.dataset.playlistDelete)));
+  list.querySelectorAll('[data-playlist-toggle]').forEach((button) => button.addEventListener('click', () => togglePlaylistPublished(button.dataset.playlistToggle)));
+}
+
+function resetPlaylistForm() {
+  document.getElementById('playlist-form').reset();
+  document.getElementById('playlist-id').value = '';
+  document.getElementById('playlist-sort-order').value = '0';
+  document.getElementById('playlist-published').checked = true;
+  document.getElementById('playlist-cover-current').textContent = 'Nenhuma capa enviada.';
+  state.editingPlaylist = null;
+  setMessage(document.getElementById('playlist-form-message'));
+}
+
+function openPlaylistForm(id = '') {
+  resetPlaylistForm();
+  const playlist = state.playlists.find((item) => item.id === id);
+  if (playlist) {
+    state.editingPlaylist = playlist;
+    document.getElementById('playlist-dialog-title').textContent = 'Editar playlist';
+    document.getElementById('playlist-id').value = playlist.id;
+    document.getElementById('playlist-title').value = playlist.title || '';
+    document.getElementById('playlist-artist').value = playlist.artist_name || '';
+    document.getElementById('playlist-platform').value = playlist.platform || 'spotify';
+    document.getElementById('playlist-sort-order').value = playlist.sort_order || 0;
+    document.getElementById('playlist-url').value = playlist.playlist_url || '';
+    document.getElementById('playlist-embed-url').value = playlist.embed_url || '';
+    document.getElementById('playlist-description').value = playlist.description || '';
+    document.getElementById('playlist-published').checked = Boolean(playlist.published);
+    document.getElementById('playlist-featured').checked = Boolean(playlist.featured);
+    document.getElementById('playlist-cover-current').textContent = playlist.cover_path ? 'Capa atual preservada.' : 'Nenhuma capa enviada.';
+  } else {
+    document.getElementById('playlist-dialog-title').textContent = 'Nova playlist';
+  }
+  document.getElementById('playlist-dialog').showModal();
+}
+
+async function savePlaylist(event) {
+  event.preventDefault();
+  const button = document.getElementById('playlist-save');
+  const message = document.getElementById('playlist-form-message');
+  setMessage(message);
+  setButtonLoading(button, true, 'Salvando...');
+
+  let uploadedNow = [];
+  try {
+    const old = state.editingPlaylist;
+    let coverPath = old?.cover_path || null;
+    const filesToDelete = [];
+    const coverFile = document.getElementById('playlist-cover-file').files[0];
+
+    if (document.getElementById('playlist-remove-cover').checked && coverPath) {
+      filesToDelete.push(coverPath);
+      coverPath = null;
+    }
+    if (coverFile) {
+      const newPath = await uploadFile(coverFile, 'playlists/covers', 'image');
+      uploadedNow.push(newPath);
+      if (coverPath) filesToDelete.push(coverPath);
+      coverPath = newPath;
+    }
+
+    const playlistUrl = document.getElementById('playlist-url').value.trim();
+    const embedUrl = document.getElementById('playlist-embed-url').value.trim();
+    if (!/^https?:\/\//i.test(playlistUrl)) throw new Error('Cole um link válido da playlist.');
+    if (embedUrl && !/^https?:\/\//i.test(embedUrl)) throw new Error('O link de incorporação precisa começar com http:// ou https://.');
+
+    const payload = {
+      title: document.getElementById('playlist-title').value.trim(),
+      artist_name: document.getElementById('playlist-artist').value.trim() || null,
+      platform: document.getElementById('playlist-platform').value,
+      playlist_url: playlistUrl,
+      embed_url: embedUrl || null,
+      description: document.getElementById('playlist-description').value.trim() || null,
+      cover_path: coverPath,
+      sort_order: Number(document.getElementById('playlist-sort-order').value || 0),
+      published: document.getElementById('playlist-published').checked,
+      featured: document.getElementById('playlist-featured').checked,
+      updated_at: new Date().toISOString(),
+    };
+    if (!payload.title) throw new Error('Preencha o título da playlist.');
+
+    const query = old
+      ? supabase.from('streaming_playlists').update(payload).eq('id', old.id).select().single()
+      : supabase.from('streaming_playlists').insert(payload).select().single();
+    const { data, error } = await query;
+    if (error) throw error;
+
+    await removeFiles(filesToDelete);
+    if (old) state.playlists = state.playlists.map((item) => item.id === data.id ? data : item);
+    else state.playlists.unshift(data);
+    state.playlists.sort((a, b) => Number(b.featured) - Number(a.featured) || a.sort_order - b.sort_order);
+
+    renderPlaylistsAdmin();
+    await loadActivities();
+    renderOverview();
+    document.getElementById('playlist-dialog').close();
+    setGlobalMessage('Playlist salva com sucesso.', 'success');
+  } catch (error) {
+    console.error(error);
+    await removeFiles(uploadedNow);
+    setMessage(message, error.message || 'Não foi possível salvar a playlist.', 'error');
+  } finally {
+    setButtonLoading(button, false);
+  }
+}
+
+async function togglePlaylistPublished(id) {
+  const playlist = state.playlists.find((item) => item.id === id);
+  if (!playlist) return;
+  const { data, error } = await supabase.from('streaming_playlists').update({ published: !playlist.published, updated_at: new Date().toISOString() }).eq('id', id).select().single();
+  if (error) return setGlobalMessage('Não foi possível atualizar a playlist.', 'error');
+  state.playlists = state.playlists.map((item) => item.id === id ? data : item);
+  renderPlaylistsAdmin();
+  await loadActivities();
+  renderOverview();
+}
+
+function confirmDeletePlaylist(id) {
+  const playlist = state.playlists.find((item) => item.id === id);
+  if (!playlist) return;
+  confirmAction('Excluir playlist?', `“${playlist.title}” será removida da página pública.`, async () => {
+    const { error } = await supabase.from('streaming_playlists').delete().eq('id', id);
+    if (error) return setGlobalMessage('Não foi possível excluir a playlist.', 'error');
+    await removeFiles([playlist.cover_path]);
+    state.playlists = state.playlists.filter((item) => item.id !== id);
+    renderPlaylistsAdmin();
+    await loadActivities();
+    renderOverview();
+    setGlobalMessage('Playlist excluída.', 'success');
+  });
 }
 
 async function loadAgenda() {
@@ -436,12 +646,14 @@ function renderOverview() {
   }).length;
   const upcoming = state.agenda.filter((item) => (item.end_date || item.start_date) >= today && item.status !== 'cancelado' && item.status !== 'realizado').length;
   const available = state.agenda.filter((item) => (item.end_date || item.start_date) >= today && item.status === 'disponivel').length;
+  const playlistsPublished = state.playlists.filter((item) => item.published).length;
 
   document.getElementById('overview-project-total').textContent = total;
   document.getElementById('overview-published-total').textContent = published;
   document.getElementById('overview-draft-total').textContent = drafts;
   document.getElementById('overview-upcoming-total').textContent = upcoming;
   document.getElementById('overview-available-total').textContent = available;
+  document.getElementById('overview-playlist-total').textContent = playlistsPublished;
   document.getElementById('overview-project-month').textContent = thisMonth ? `+${thisMonth} este mês` : 'Nenhum este mês';
   document.getElementById('overview-published-rate').textContent = total ? `${Math.round((published / total) * 100)}% do total` : '0% do total';
   document.getElementById('overview-draft-rate').textContent = total ? `${Math.round((drafts / total) * 100)}% do total` : '0% do total';
@@ -486,6 +698,7 @@ function renderActivity() {
     items = [
       ...state.projects.map((item) => ({ action: 'updated', entity_type: 'project', entity_title: item.title, created_at: item.updated_at || item.created_at })),
       ...state.agenda.map((item) => ({ action: 'updated', entity_type: 'agenda', entity_title: item.title, created_at: item.updated_at || item.created_at })),
+      ...state.playlists.map((item) => ({ action: 'updated', entity_type: 'playlist', entity_title: item.title, created_at: item.updated_at || item.created_at })),
     ].filter((item) => item.created_at).sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 6);
   }
 
@@ -496,9 +709,13 @@ function renderActivity() {
 
   const actionText = { inserted: 'criado', updated: 'atualizado', deleted: 'excluído', published: 'publicado' };
   container.innerHTML = items.slice(0, 6).map((item) => {
-    const isProject = item.entity_type === 'project';
-    const icon = isProject ? '▢' : '▣';
-    const type = isProject ? 'Projeto' : 'Evento';
+    const entity = {
+      project: { icon: '▢', type: 'Projeto' },
+      agenda: { icon: '▣', type: 'Evento' },
+      playlist: { icon: '▶', type: 'Playlist' },
+    }[item.entity_type] || { icon: '•', type: 'Item' };
+    const icon = entity.icon;
+    const type = entity.type;
     return `<div class="activity-item">
       <span class="activity-dot">${icon}</span>
       <div><h3>${type} “${escapeHtml(item.entity_title || 'Sem título')}” foi ${escapeHtml(actionText[item.action] || 'atualizado')}.</h3><p>por Apollus</p></div>

@@ -37,6 +37,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M7 3v4M17 3v4M3 10h18"></path></svg>
           Agenda
         </button>
+        <button class="admin-nav-item" type="button" data-admin-tab="playlists">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"></circle><path d="M9.5 8.5v7l6-3.5z"></path></svg>
+          Playlists
+        </button>
       </nav>
 
       <div class="admin-tip">
@@ -68,6 +72,7 @@
           <div>
             <button id="overview-new-project" class="admin-btn primary" type="button">+ Novo projeto</button>
             <button id="overview-new-agenda" class="admin-btn accent" type="button">▣ Novo evento</button>
+            <button id="overview-new-playlist" class="admin-btn playlist-accent" type="button">▶ Nova playlist</button>
           </div>
         </div>
 
@@ -77,6 +82,7 @@
           <article class="overview-stat yellow-stat"><div><span>Rascunhos</span><strong id="overview-draft-total">0</strong><small id="overview-draft-rate">0% do total</small></div><span class="metric-icon">✎</span></article>
           <article class="overview-stat pink-stat"><div><span>Próximos eventos</span><strong id="overview-upcoming-total">0</strong><small>Agenda futura</small></div><span class="metric-icon">▣</span></article>
           <article class="overview-stat blue-stat"><div><span>Datas disponíveis</span><strong id="overview-available-total">0</strong><small>Disponibilidade futura</small></div><span class="metric-icon">◷</span></article>
+          <article class="overview-stat green-stat"><div><span>Playlists ativas</span><strong id="overview-playlist-total">0</strong><small>Curadoria publicada</small></div><span class="metric-icon">▶</span></article>
         </div>
 
         <div class="overview-grid">
@@ -125,6 +131,38 @@
         <div id="projects-admin-loading" class="admin-list-state">Carregando projetos...</div>
         <div id="projects-admin-empty" class="admin-list-state" hidden>Nenhum projeto cadastrado.</div>
         <div id="projects-admin-list" class="admin-list"></div>
+      </section>
+
+      <section id="playlists-panel" class="admin-panel" data-panel="playlists">
+        <div class="panel-toolbar">
+          <div class="stats-grid">
+            <div class="stat-card"><span>Total</span><strong id="playlist-count">0</strong></div>
+            <div class="stat-card"><span>Publicadas</span><strong id="playlist-published-count">0</strong></div>
+          </div>
+          <button id="new-playlist-button" class="admin-btn primary" type="button">+ Nova playlist</button>
+        </div>
+
+        <div class="list-toolbar playlists-toolbar">
+          <label class="search-field"><span class="sr-only">Buscar playlist</span><input id="playlist-search" type="search" placeholder="Buscar por título, artista ou plataforma..."></label>
+          <select id="playlist-platform-filter" aria-label="Filtrar por plataforma">
+            <option value="todos">Todas as plataformas</option>
+            <option value="spotify">Spotify</option>
+            <option value="youtube">YouTube Music</option>
+            <option value="apple_music">Apple Music</option>
+            <option value="deezer">Deezer</option>
+            <option value="soundcloud">SoundCloud</option>
+            <option value="outros">Outros</option>
+          </select>
+        </div>
+
+        <div class="playlist-admin-intro">
+          <strong>Curadoria para engajamento</strong>
+          <p>Cadastre playlists que valorizem os artistas da Apollus. No Spotify e no YouTube, o player é incorporado automaticamente a partir do link compartilhado.</p>
+        </div>
+
+        <div id="playlists-admin-loading" class="admin-list-state">Carregando playlists...</div>
+        <div id="playlists-admin-empty" class="admin-list-state" hidden>Nenhuma playlist cadastrada.</div>
+        <div id="playlists-admin-list" class="admin-list"></div>
       </section>
 
       <section id="agenda-panel" class="admin-panel" data-panel="agenda">
@@ -198,6 +236,44 @@
         <button id="project-save" class="admin-btn primary" type="submit">Salvar projeto</button>
       </footer>
       <p id="project-form-message" class="form-message" aria-live="polite"></p>
+    </form>
+  </dialog>
+
+  <dialog id="playlist-dialog" class="admin-dialog">
+    <form id="playlist-form" class="admin-dialog-card compact">
+      <header class="dialog-header">
+        <div>
+          <p class="admin-kicker">Curadoria e streaming</p>
+          <h2 id="playlist-dialog-title">Nova playlist</h2>
+        </div>
+        <button class="dialog-close" type="button" data-admin-close aria-label="Fechar">×</button>
+      </header>
+
+      <input id="playlist-id" type="hidden">
+      <div class="form-grid two-columns">
+        <label><span>Título *</span><input id="playlist-title" type="text" required maxlength="120" placeholder="Novos sons da Apollus"></label>
+        <label><span>Artista / curadoria</span><input id="playlist-artist" type="text" maxlength="120" placeholder="Apollus ou nome do artista"></label>
+        <label><span>Plataforma *</span><select id="playlist-platform" required><option value="spotify">Spotify</option><option value="youtube">YouTube Music</option><option value="apple_music">Apple Music</option><option value="deezer">Deezer</option><option value="soundcloud">SoundCloud</option><option value="outros">Outros</option></select></label>
+        <label><span>Ordem manual</span><input id="playlist-sort-order" type="number" value="0" step="1"></label>
+      </div>
+
+      <label><span>Link da playlist *</span><input id="playlist-url" type="url" required placeholder="Cole o link compartilhado pelo streaming"></label>
+      <label><span>Link de incorporação opcional</span><input id="playlist-embed-url" type="url" placeholder="Use somente se a plataforma fornecer um URL de embed"></label>
+      <label><span>Descrição</span><textarea id="playlist-description" rows="4" maxlength="420" placeholder="Explique a proposta da playlist e convide o público a seguir, salvar e compartilhar."></textarea></label>
+
+      <label class="upload-box"><span>Capa personalizada opcional</span><input id="playlist-cover-file" type="file" accept="image/jpeg,image/png,image/webp"><small id="playlist-cover-current">Nenhuma capa enviada.</small></label>
+
+      <div class="form-checks">
+        <label class="checkbox-label"><input id="playlist-published" type="checkbox" checked><span>Publicada no site</span></label>
+        <label class="checkbox-label"><input id="playlist-featured" type="checkbox"><span>Destacar primeiro</span></label>
+        <label class="checkbox-label"><input id="playlist-remove-cover" type="checkbox"><span>Remover capa atual</span></label>
+      </div>
+
+      <footer class="dialog-actions">
+        <button class="admin-btn secondary" type="button" data-admin-close>Cancelar</button>
+        <button id="playlist-save" class="admin-btn primary" type="submit">Salvar playlist</button>
+      </footer>
+      <p id="playlist-form-message" class="form-message" aria-live="polite"></p>
     </form>
   </dialog>
 

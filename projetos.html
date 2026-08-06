@@ -79,6 +79,28 @@
       </div>
     </section>
 
+    <section id="playlists" class="section streaming-section section-art">
+      <div class="container">
+        <div class="section-heading reveal">
+          <p class="section-kicker">Curadoria Apollus</p>
+          <h2>Ouça, descubra e fortaleça artistas.</h2>
+          <p>Playlists pensadas para ampliar descobertas, aproximar públicos e gerar novos ciclos de escuta. Siga, salve e compartilhe.</p>
+        </div>
+
+        <div id="playlists-loading" class="content-state dark-state">
+          <span class="spinner" aria-hidden="true"></span>
+          <p>Carregando playlists...</p>
+        </div>
+        <div id="playlists-error" class="content-state dark-state" hidden>
+          <p>Não foi possível carregar as playlists.</p>
+        </div>
+        <div id="playlists-empty" class="content-state dark-state" hidden>
+          <p>Novas playlists serão publicadas em breve.</p>
+        </div>
+        <div id="streaming-playlists-grid" class="streaming-playlists-grid" aria-live="polite"></div>
+      </div>
+    </section>
+
     <section class="section upcoming-section section-art">
       <div class="container">
         <div class="section-heading reveal">
