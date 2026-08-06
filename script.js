@@ -3,22 +3,34 @@
 let supabase = null;
 let isSupabaseConfigured = false;
 let mediaUrl = () => '';
-let supabaseModuleLoaded = false;
+let supabaseLoadPromise = null;
 
+/**
+ * Carrega o Supabase uma única vez e compartilha a mesma Promise
+ * entre Projetos, Playlists e Agenda.
+ *
+ * Antes, a flag era marcada antes do import terminar. Com isso,
+ * as outras seções continuavam com `supabase === null`.
+ */
 async function ensureSupabase() {
-  if (supabaseModuleLoaded) return;
-  supabaseModuleLoaded = true;
-
-  try {
-    const config = await import('./supabase-config.js');
-    supabase = config.supabase;
-    isSupabaseConfigured = config.isSupabaseConfigured;
-    mediaUrl = config.mediaUrl;
-  } catch (error) {
-    console.error('Não foi possível carregar o módulo do Supabase:', error);
-    supabase = null;
-    isSupabaseConfigured = false;
+  if (!supabaseLoadPromise) {
+    supabaseLoadPromise = import('./supabase-config.js')
+      .then((config) => {
+        supabase = config.supabase;
+        isSupabaseConfigured = config.isSupabaseConfigured;
+        mediaUrl = config.mediaUrl;
+        return config;
+      })
+      .catch((error) => {
+        console.error('Não foi possível carregar o módulo do Supabase:', error);
+        supabase = null;
+        isSupabaseConfigured = false;
+        supabaseLoadPromise = null;
+        return null;
+      });
   }
+
+  return supabaseLoadPromise;
 }
 
 const page = document.body?.dataset.page || '';
