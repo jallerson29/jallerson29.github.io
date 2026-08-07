@@ -11,6 +11,8 @@ const state = {
   agenda: [],
   playlists: [],
   trashItems: [],
+  siteSettings: null,
+  siteSettingsRow: null,
   adminContacts: [],
   meetingInvites: [],
   editingProject: null,
@@ -23,7 +25,56 @@ const state = {
   currentSession: null,
   calendarDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
   draggedProjectId: null,
-};
+ };
+
+const SITE_SETTINGS_ID = '00000000-0000-0000-0000-000000000001';
+const DEFAULT_SITE_SETTINGS = Object.freeze({
+  site_name: 'Apollus',
+  site_title: 'Apollus | Arte, Som & Experiência',
+  meta_description: 'Apollus — produtora criativa de música, eventos, teatro, cultura e educação.',
+  whatsapp_number: '5541996600432',
+  whatsapp_message: 'Olá Apollus! Tenho uma ideia de projeto e gostaria de conversar.',
+  instagram_url: 'https://www.instagram.com/apollusart/',
+  copyright_year: 2026,
+  footer_location: 'Curitiba-PR',
+  hero_eyebrow: 'Produtora criativa independente',
+  hero_title_line1: 'Transformamos',
+  hero_title_highlight: 'ideias',
+  hero_title_connector: 'em',
+  hero_title_line3: 'experiências.',
+  hero_text: 'Música, eventos, teatro, cultura e educação reunidos em um só lugar para dar forma, direção e vida a projetos criativos.',
+  hero_primary_label: 'Quero falar sobre meu projeto',
+  hero_secondary_label: 'Conhecer a Apollus',
+  about_title: 'Uma ponte entre a ideia e a realização.',
+  about_text_1: 'O nome Apollus nasce de uma releitura de Apolo, figura mitológica ligada à música, à arte, à luz e à inspiração criativa.',
+  about_text_2: 'Somos uma produtora independente que conecta criação, técnica e estratégia para transformar ideias em projetos reais — mesmo quando elas ainda estão no começo.',
+  cta_kicker: 'Vamos criar?',
+  cta_title: 'Sua ideia não precisa chegar pronta.',
+  cta_text: 'A Apollus ajuda a dar forma, direção e estrutura para ela acontecer.',
+  cta_button_label: 'Falar sobre meu projeto',
+  projects_hero_eyebrow: 'Portfólio e agenda',
+  projects_hero_line1: 'Projetos que',
+  projects_hero_highlight: 'saíram do papel.',
+  projects_hero_text: 'Produções musicais, eventos, projetos culturais, trabalhos artísticos e experiências desenvolvidas pela Apollus.',
+  portfolio_title: 'Projetos realizados',
+  portfolio_text: 'Trabalhos que já passaram por nossas mãos, ideias que ganharam forma e experiências que aconteceram de verdade.',
+  playlist_title: 'Ouça, descubra e fortaleça artistas.',
+  playlist_text: 'Playlists pensadas para ampliar descobertas, aproximar públicos e gerar novos ciclos de escuta. Siga, salve e compartilhe.',
+  upcoming_title: 'Próximos acontecimentos',
+  upcoming_text: 'Eventos, lançamentos e experiências que já estão sendo preparados.',
+  calendar_heading: 'Veja o que está acontecendo.',
+  calendar_text: 'Navegue pelos meses e abra cada data para consultar detalhes, horários, locais e disponibilidade.',
+  agenda_kicker: 'Agenda Apollus',
+  agenda_title: 'Tem uma ideia esperando para acontecer?',
+  agenda_text: 'Consulte disponibilidade para produções musicais, eventos, projetos culturais, teatro, cursos e experiências criativas.',
+  agenda_button_label: 'Consultar agenda',
+  agenda_open: true,
+  show_team: true,
+  show_playlists: true,
+  show_agenda: true,
+  projects_limit: 0,
+  playlists_limit: 0,
+});
 
 function escapeHtml(value = '') {
   return String(value)
@@ -217,12 +268,13 @@ async function initDashboard() {
   document.getElementById('admin-app').hidden = false;
 
   setupDashboardEvents();
-  await Promise.all([loadProjects(), loadAgenda(), loadPlaylists(), loadActivities(), loadAdminContacts(), loadTrash()]);
+  await Promise.all([loadProjects(), loadAgenda(), loadPlaylists(), loadActivities(), loadAdminContacts(), loadTrash(), loadSiteSettings()]);
   renderMeetingInviteeOptions();
   populateHistoryActorFilter();
   populateTrashActorFilter();
   renderHistory();
   renderTrash();
+  renderSiteSettingsForm();
   renderOverview();
 }
 
@@ -249,6 +301,8 @@ function setupDashboardEvents() {
   document.getElementById('project-form').addEventListener('submit', saveProject);
   document.getElementById('playlist-form').addEventListener('submit', savePlaylist);
   document.getElementById('agenda-form').addEventListener('submit', saveAgenda);
+  document.getElementById('site-settings-form')?.addEventListener('submit', saveSiteSettings);
+  document.getElementById('site-settings-reset')?.addEventListener('click', resetSiteSettingsForm);
   document.getElementById('agenda-type').addEventListener('input', updateMeetingFields);
   document.getElementById('meeting-select-all').addEventListener('click', toggleAllMeetingInvitees);
   document.getElementById('project-title').addEventListener('input', autoFillSlug);
@@ -295,7 +349,7 @@ function setupDashboardEvents() {
 }
 
 function switchPanel(panel) {
-  const titles = { overview: 'Visão geral', projects: 'Projetos', playlists: 'Playlists', agenda: 'Agenda', history: 'Histórico', trash: 'Lixeira' };
+  const titles = { overview: 'Visão geral', projects: 'Projetos', playlists: 'Playlists', agenda: 'Agenda', history: 'Histórico', trash: 'Lixeira', settings: 'Configurações' };
   document.querySelectorAll('[data-admin-tab]').forEach((button) => button.classList.toggle('active', button.dataset.adminTab === panel));
   document.querySelectorAll('[data-panel]').forEach((section) => section.classList.toggle('active', section.dataset.panel === panel));
   document.getElementById('admin-page-title').textContent = titles[panel] || 'Painel';
@@ -862,6 +916,151 @@ function confirmPermanentDelete(entityType, id) {
 }
 
 
+
+function normalizedSiteSettings(value = {}) {
+  return { ...DEFAULT_SITE_SETTINGS, ...(value && typeof value === 'object' ? value : {}) };
+}
+
+async function loadSiteSettings() {
+  const { data, error } = await supabase
+    .from('site_settings')
+    .select('id, settings, updated_at, updated_by')
+    .eq('id', SITE_SETTINGS_ID)
+    .maybeSingle();
+
+  if (error) {
+    console.warn('Configurações do site indisponíveis. Execute settings-v1.sql.', error);
+    state.siteSettingsRow = null;
+    state.siteSettings = normalizedSiteSettings();
+    return;
+  }
+
+  state.siteSettingsRow = data || null;
+  state.siteSettings = normalizedSiteSettings(data?.settings);
+}
+
+function formControlForSetting(form, key) {
+  return form?.elements?.namedItem(key) || null;
+}
+
+function fillSiteSettingsForm(settings = state.siteSettings || DEFAULT_SITE_SETTINGS) {
+  const form = document.getElementById('site-settings-form');
+  if (!form) return;
+  const merged = normalizedSiteSettings(settings);
+
+  Object.entries(merged).forEach(([key, value]) => {
+    const control = formControlForSetting(form, key);
+    if (!control) return;
+    if (control.type === 'checkbox') control.checked = Boolean(value);
+    else control.value = value ?? '';
+  });
+}
+
+function renderSiteSettingsForm() {
+  const form = document.getElementById('site-settings-form');
+  if (!form) return;
+  fillSiteSettingsForm();
+
+  const meta = document.getElementById('settings-updated-meta');
+  if (!meta) return;
+  const row = state.siteSettingsRow;
+  if (!row?.updated_at) {
+    meta.textContent = 'Valores padrão carregados';
+    return;
+  }
+  const contact = state.adminContacts.find((person) => person.user_id === row.updated_by);
+  const actor = contact?.name || contact?.email || 'Equipe Apollus';
+  meta.textContent = `Última atualização: ${formatDateTime(row.updated_at)} • ${actor}`;
+}
+
+function collectSiteSettingsForm() {
+  const form = document.getElementById('site-settings-form');
+  if (!form) return normalizedSiteSettings();
+  const result = {};
+
+  Object.keys(DEFAULT_SITE_SETTINGS).forEach((key) => {
+    const control = formControlForSetting(form, key);
+    if (!control) return;
+    if (control.type === 'checkbox') result[key] = control.checked;
+    else if (control.type === 'number') result[key] = Number(control.value || 0);
+    else result[key] = control.value.trim();
+  });
+
+  result.whatsapp_number = String(result.whatsapp_number || '').replace(/\D/g, '');
+  result.projects_limit = Math.max(0, Math.min(100, Number(result.projects_limit || 0)));
+  result.playlists_limit = Math.max(0, Math.min(100, Number(result.playlists_limit || 0)));
+  result.copyright_year = Math.max(2024, Math.min(2100, Number(result.copyright_year || 2026)));
+
+  if (result.whatsapp_number.length < 10 || result.whatsapp_number.length > 15) {
+    throw new Error('Informe o WhatsApp com DDI e DDD, usando apenas números.');
+  }
+  try {
+    const instagram = new URL(result.instagram_url);
+    if (!['http:', 'https:'].includes(instagram.protocol)) throw new Error();
+  } catch {
+    throw new Error('Informe um link válido do Instagram.');
+  }
+
+  const requiredKeys = [
+    'site_name', 'site_title', 'meta_description', 'whatsapp_message', 'footer_location',
+    'hero_eyebrow', 'hero_title_line1', 'hero_title_highlight', 'hero_title_connector',
+    'hero_title_line3', 'hero_text', 'hero_primary_label', 'hero_secondary_label',
+    'about_title', 'about_text_1', 'about_text_2', 'cta_kicker', 'cta_title', 'cta_text',
+    'cta_button_label', 'projects_hero_eyebrow', 'projects_hero_line1',
+    'projects_hero_highlight', 'projects_hero_text', 'portfolio_title', 'portfolio_text',
+    'playlist_title', 'playlist_text', 'upcoming_title', 'upcoming_text', 'calendar_heading',
+    'calendar_text', 'agenda_kicker', 'agenda_title', 'agenda_text', 'agenda_button_label',
+  ];
+  const empty = requiredKeys.find((key) => !String(result[key] || '').trim());
+  if (empty) throw new Error('Preencha todos os campos obrigatórios antes de salvar.');
+
+  return normalizedSiteSettings(result);
+}
+
+async function saveSiteSettings(event) {
+  event.preventDefault();
+  const button = document.getElementById('site-settings-save');
+  const message = document.getElementById('site-settings-message');
+  setMessage(message);
+  setButtonLoading(button, true, 'Publicando...');
+
+  try {
+    const settings = collectSiteSettingsForm();
+    const payload = {
+      id: SITE_SETTINGS_ID,
+      settings,
+      updated_by: state.currentSession?.user?.id || null,
+      updated_at: new Date().toISOString(),
+    };
+    const { data, error } = await supabase
+      .from('site_settings')
+      .upsert(payload, { onConflict: 'id' })
+      .select('id, settings, updated_at, updated_by')
+      .single();
+    if (error) throw error;
+
+    state.siteSettingsRow = data;
+    state.siteSettings = normalizedSiteSettings(data.settings);
+    renderSiteSettingsForm();
+    await loadActivities();
+    renderOverview();
+    setMessage(message, 'Configurações publicadas com sucesso.', 'success');
+    setGlobalMessage('O site público foi atualizado.', 'success');
+  } catch (error) {
+    console.error(error);
+    const hint = error?.code === '42P01' ? ' Execute settings-v1.sql no Supabase.' : '';
+    setMessage(message, `${error.message || 'Não foi possível salvar as configurações.'}${hint}`, 'error');
+  } finally {
+    setButtonLoading(button, false);
+  }
+}
+
+function resetSiteSettingsForm() {
+  if (!window.confirm('Restaurar os textos e opções padrão no formulário? Nada será publicado até você clicar em Salvar configurações.')) return;
+  fillSiteSettingsForm(DEFAULT_SITE_SETTINGS);
+  setMessage(document.getElementById('site-settings-message'), 'Valores padrão carregados. Clique em Salvar configurações para publicar.', 'success');
+}
+
 async function loadActivities() {
   const loading = document.getElementById('history-admin-loading');
   const { data, error } = await supabase
@@ -887,6 +1086,7 @@ function activityEntity(entityType = '') {
     project: { icon: '▢', type: 'Projeto', className: 'project' },
     agenda: { icon: '▣', type: 'Agenda', className: 'agenda' },
     playlist: { icon: '▶', type: 'Playlist', className: 'playlist' },
+    settings: { icon: '⚙', type: 'Configurações', className: 'settings' },
   }[entityType] || { icon: '•', type: 'Item', className: 'item' };
 }
 
@@ -929,6 +1129,21 @@ function historyFieldLabel(field = '') {
     deleted_at: 'Movido para a lixeira', deleted_by: 'Responsável pela exclusão',
     deleted_by_name: 'Nome de quem excluiu', deleted_by_email: 'E-mail de quem excluiu',
     deleted_previous_published: 'Publicação anterior',
+    site_name: 'Nome da marca', site_title: 'Título do site', meta_description: 'Descrição para buscadores',
+    whatsapp_number: 'WhatsApp', whatsapp_message: 'Mensagem do WhatsApp', instagram_url: 'Instagram',
+    copyright_year: 'Ano do rodapé', footer_location: 'Localização do rodapé', hero_eyebrow: 'Texto superior do destaque',
+    hero_title_line1: 'Título principal — linha 1', hero_title_highlight: 'Palavra em destaque', hero_title_connector: 'Conector do título',
+    hero_title_line3: 'Título principal — linha final', hero_text: 'Apresentação principal', hero_primary_label: 'Botão principal',
+    hero_secondary_label: 'Botão secundário', about_title: 'Título Sobre', about_text_1: 'Sobre — parágrafo 1',
+    about_text_2: 'Sobre — parágrafo 2', cta_kicker: 'Chamada final', cta_title: 'Título final', cta_text: 'Texto final',
+    cta_button_label: 'Botão final', projects_hero_eyebrow: 'Projetos — texto superior', projects_hero_line1: 'Projetos — título',
+    projects_hero_highlight: 'Projetos — destaque', projects_hero_text: 'Projetos — introdução', portfolio_title: 'Título do portfólio',
+    portfolio_text: 'Descrição do portfólio', playlist_title: 'Título das playlists', playlist_text: 'Descrição das playlists',
+    upcoming_title: 'Título de próximos acontecimentos', upcoming_text: 'Descrição de próximos acontecimentos',
+    calendar_heading: 'Título do calendário', calendar_text: 'Descrição do calendário', agenda_kicker: 'Chamada da agenda',
+    agenda_title: 'Título da agenda', agenda_text: 'Descrição da agenda', agenda_button_label: 'Botão da agenda',
+    agenda_open: 'Agenda aberta', show_team: 'Exibir equipe', show_playlists: 'Exibir playlists', show_agenda: 'Exibir agenda',
+    projects_limit: 'Limite de projetos', playlists_limit: 'Limite de playlists',
   };
   return labels[field] || field.replaceAll('_', ' ').replace(/^./, (letter) => letter.toUpperCase());
 }

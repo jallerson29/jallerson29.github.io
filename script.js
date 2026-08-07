@@ -33,6 +33,157 @@ async function ensureSupabase() {
   return supabaseLoadPromise;
 }
 
+const SITE_SETTINGS_ID = '00000000-0000-0000-0000-000000000001';
+const DEFAULT_SITE_SETTINGS = Object.freeze({
+  site_name: 'Apollus',
+  site_title: 'Apollus | Arte, Som & Experiência',
+  meta_description: 'Apollus — produtora criativa de música, eventos, teatro, cultura e educação.',
+  whatsapp_number: '5541996600432',
+  whatsapp_message: 'Olá Apollus! Tenho uma ideia de projeto e gostaria de conversar.',
+  instagram_url: 'https://www.instagram.com/apollusart/',
+  copyright_year: 2026,
+  footer_location: 'Curitiba-PR',
+  hero_eyebrow: 'Produtora criativa independente',
+  hero_title_line1: 'Transformamos',
+  hero_title_highlight: 'ideias',
+  hero_title_connector: 'em',
+  hero_title_line3: 'experiências.',
+  hero_text: 'Música, eventos, teatro, cultura e educação reunidos em um só lugar para dar forma, direção e vida a projetos criativos.',
+  hero_primary_label: 'Quero falar sobre meu projeto',
+  hero_secondary_label: 'Conhecer a Apollus',
+  about_title: 'Uma ponte entre a ideia e a realização.',
+  about_text_1: 'O nome Apollus nasce de uma releitura de Apolo, figura mitológica ligada à música, à arte, à luz e à inspiração criativa.',
+  about_text_2: 'Somos uma produtora independente que conecta criação, técnica e estratégia para transformar ideias em projetos reais — mesmo quando elas ainda estão no começo.',
+  cta_kicker: 'Vamos criar?',
+  cta_title: 'Sua ideia não precisa chegar pronta.',
+  cta_text: 'A Apollus ajuda a dar forma, direção e estrutura para ela acontecer.',
+  cta_button_label: 'Falar sobre meu projeto',
+  projects_hero_eyebrow: 'Portfólio e agenda',
+  projects_hero_line1: 'Projetos que',
+  projects_hero_highlight: 'saíram do papel.',
+  projects_hero_text: 'Produções musicais, eventos, projetos culturais, trabalhos artísticos e experiências desenvolvidas pela Apollus.',
+  portfolio_title: 'Projetos realizados',
+  portfolio_text: 'Trabalhos que já passaram por nossas mãos, ideias que ganharam forma e experiências que aconteceram de verdade.',
+  playlist_title: 'Ouça, descubra e fortaleça artistas.',
+  playlist_text: 'Playlists pensadas para ampliar descobertas, aproximar públicos e gerar novos ciclos de escuta. Siga, salve e compartilhe.',
+  upcoming_title: 'Próximos acontecimentos',
+  upcoming_text: 'Eventos, lançamentos e experiências que já estão sendo preparados.',
+  calendar_heading: 'Veja o que está acontecendo.',
+  calendar_text: 'Navegue pelos meses e abra cada data para consultar detalhes, horários, locais e disponibilidade.',
+  agenda_kicker: 'Agenda Apollus',
+  agenda_title: 'Tem uma ideia esperando para acontecer?',
+  agenda_text: 'Consulte disponibilidade para produções musicais, eventos, projetos culturais, teatro, cursos e experiências criativas.',
+  agenda_button_label: 'Consultar agenda',
+  agenda_open: true,
+  show_team: true,
+  show_playlists: true,
+  show_agenda: true,
+  projects_limit: 0,
+  playlists_limit: 0,
+});
+
+let siteSettings = { ...DEFAULT_SITE_SETTINGS };
+let siteSettingsLoadPromise = null;
+
+function setSiteText(id, value) {
+  const element = document.getElementById(id);
+  if (element && value !== undefined && value !== null) element.textContent = String(value);
+}
+
+function applySiteSettings(settings = DEFAULT_SITE_SETTINGS) {
+  siteSettings = { ...DEFAULT_SITE_SETTINGS, ...(settings || {}) };
+
+  const description = document.querySelector('meta[name="description"]');
+  if (description) description.setAttribute('content', siteSettings.meta_description);
+
+  if (page === 'home') document.title = siteSettings.site_title;
+  if (page === 'projects') document.title = `Projetos | ${siteSettings.site_name}`;
+
+  const whatsappNumber = String(siteSettings.whatsapp_number || '').replace(/\D/g, '');
+  const whatsappHref = whatsappNumber
+    ? `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(siteSettings.whatsapp_message || '')}`
+    : '#';
+  document.querySelectorAll('[data-whatsapp-link]').forEach((link) => { link.href = whatsappHref; });
+
+  const instagramUrl = safeExternalUrl(siteSettings.instagram_url);
+  document.querySelectorAll('[data-instagram-link]').forEach((link) => {
+    if (instagramUrl) link.href = instagramUrl;
+  });
+
+  setSiteText('site-footer-copy', `© ${siteSettings.copyright_year} ${siteSettings.site_name} - ${siteSettings.footer_location}`);
+
+  setSiteText('site-hero-eyebrow', siteSettings.hero_eyebrow);
+  const heroTitle = document.getElementById('site-hero-title');
+  if (heroTitle) {
+    heroTitle.innerHTML = `${escapeHtml(siteSettings.hero_title_line1)}<br><span>${escapeHtml(siteSettings.hero_title_highlight)}</span> ${escapeHtml(siteSettings.hero_title_connector)}<br>${escapeHtml(siteSettings.hero_title_line3)}`;
+  }
+  setSiteText('site-hero-text', siteSettings.hero_text);
+  setSiteText('site-hero-primary', siteSettings.hero_primary_label);
+  setSiteText('site-hero-secondary', siteSettings.hero_secondary_label);
+  setSiteText('site-about-title', siteSettings.about_title);
+  setSiteText('site-about-text-1', siteSettings.about_text_1);
+  setSiteText('site-about-text-2', siteSettings.about_text_2);
+  setSiteText('site-cta-kicker', siteSettings.cta_kicker);
+  setSiteText('site-cta-title', siteSettings.cta_title);
+  setSiteText('site-cta-text', siteSettings.cta_text);
+  setSiteText('site-cta-button', siteSettings.cta_button_label);
+
+  setSiteText('site-projects-hero-eyebrow', siteSettings.projects_hero_eyebrow);
+  const projectsTitle = document.getElementById('site-projects-hero-title');
+  if (projectsTitle) projectsTitle.innerHTML = `${escapeHtml(siteSettings.projects_hero_line1)}<br><span>${escapeHtml(siteSettings.projects_hero_highlight)}</span>`;
+  setSiteText('site-projects-hero-text', siteSettings.projects_hero_text);
+  setSiteText('site-portfolio-title', siteSettings.portfolio_title);
+  setSiteText('site-portfolio-text', siteSettings.portfolio_text);
+  setSiteText('site-playlist-title', siteSettings.playlist_title);
+  setSiteText('site-playlist-text', siteSettings.playlist_text);
+  setSiteText('site-upcoming-title', siteSettings.upcoming_title);
+  setSiteText('site-upcoming-text', siteSettings.upcoming_text);
+  setSiteText('site-calendar-heading', siteSettings.calendar_heading);
+  setSiteText('site-calendar-text', siteSettings.calendar_text);
+  setSiteText('site-agenda-kicker', siteSettings.agenda_kicker);
+  setSiteText('site-agenda-title', siteSettings.agenda_title);
+  setSiteText('site-agenda-text', siteSettings.agenda_text);
+  setSiteText('site-agenda-button', siteSettings.agenda_button_label);
+  setSiteText('site-agenda-note-status', siteSettings.agenda_open ? 'ABERTA' : 'CONSULTE');
+  setSiteText('site-agenda-note-caption', siteSettings.agenda_open ? 'para novas ideias' : 'novas datas');
+
+  const team = document.querySelector('[data-site-section="team"]');
+  if (team) team.hidden = !siteSettings.show_team;
+  document.querySelectorAll('[data-site-section="playlists"]').forEach((section) => { section.hidden = !siteSettings.show_playlists; });
+  document.querySelectorAll('[data-site-section="agenda"]').forEach((section) => { section.hidden = !siteSettings.show_agenda; });
+}
+
+async function loadSiteSettings() {
+  if (!siteSettingsLoadPromise) {
+    siteSettingsLoadPromise = (async () => {
+      await ensureSupabase();
+      if (!isSupabaseConfigured || !supabase) {
+        applySiteSettings(DEFAULT_SITE_SETTINGS);
+        return siteSettings;
+      }
+
+      const { data, error } = await supabase
+        .from('site_settings')
+        .select('settings')
+        .eq('id', SITE_SETTINGS_ID)
+        .maybeSingle();
+
+      if (error) {
+        console.warn('Não foi possível carregar as configurações do site. Usando os valores padrão.', error);
+        applySiteSettings(DEFAULT_SITE_SETTINGS);
+      } else {
+        applySiteSettings(data?.settings || DEFAULT_SITE_SETTINGS);
+      }
+      return siteSettings;
+    })().catch((error) => {
+      console.warn('Falha ao aplicar configurações públicas:', error);
+      applySiteSettings(DEFAULT_SITE_SETTINGS);
+      return siteSettings;
+    });
+  }
+  return siteSettingsLoadPromise;
+}
+
 const page = document.body?.dataset.page || '';
 const header = document.getElementById('header');
 const menuToggle = document.querySelector('.menu-toggle');
@@ -215,6 +366,7 @@ function renderProjectCard(project) {
 }
 
 async function loadProjectsPage() {
+  await loadSiteSettings();
   await ensureSupabase();
   const grid = document.getElementById('projects-grid');
   const loading = document.getElementById('projects-loading');
@@ -228,7 +380,7 @@ async function loadProjectsPage() {
     return;
   }
 
-  const { data, error } = await supabase
+  let projectsQuery = supabase
     .from('projects')
     .select('*')
     .eq('published', true)
@@ -236,6 +388,8 @@ async function loadProjectsPage() {
     .order('featured', { ascending: false })
     .order('project_date', { ascending: false, nullsFirst: false })
     .order('created_at', { ascending: false });
+  if (Number(siteSettings.projects_limit) > 0) projectsQuery = projectsQuery.limit(Number(siteSettings.projects_limit));
+  const { data, error } = await projectsQuery;
 
   loading.hidden = true;
   if (error) {
@@ -364,6 +518,8 @@ function renderStreamingPlaylist(playlist) {
 }
 
 async function loadStreamingPlaylists() {
+  await loadSiteSettings();
+  if (!siteSettings.show_playlists) return;
   await ensureSupabase();
   const grid = document.getElementById('streaming-playlists-grid');
   const loading = document.getElementById('playlists-loading');
@@ -377,13 +533,15 @@ async function loadStreamingPlaylists() {
     return;
   }
 
-  const { data, error } = await supabase
+  let playlistsQuery = supabase
     .from('streaming_playlists')
     .select('*')
     .eq('published', true)
     .order('featured', { ascending: false })
     .order('sort_order', { ascending: true })
     .order('created_at', { ascending: false });
+  if (Number(siteSettings.playlists_limit) > 0) playlistsQuery = playlistsQuery.limit(Number(siteSettings.playlists_limit));
+  const { data, error } = await playlistsQuery;
 
   loading.hidden = true;
   if (error) {
@@ -404,6 +562,8 @@ let calendarDate = new Date();
 calendarDate.setDate(1);
 
 async function loadAgenda() {
+  await loadSiteSettings();
+  if (!siteSettings.show_agenda) return;
   await ensureSupabase();
   const upcomingLoading = document.getElementById('upcoming-loading');
   const upcomingEmpty = document.getElementById('upcoming-empty');
@@ -619,6 +779,7 @@ function youtubeEmbedUrl(url) {
 }
 
 async function loadProjectDetail() {
+  await loadSiteSettings();
   await ensureSupabase();
   const loading = document.getElementById('project-detail-loading');
   const errorState = document.getElementById('project-detail-error');
@@ -652,7 +813,7 @@ async function loadProjectDetail() {
     return;
   }
 
-  document.title = `${project.title} | Apollus`;
+  document.title = `${project.title} | ${siteSettings.site_name}`;
   document.getElementById('detail-category').textContent = categoryLabel(project.category);
   document.getElementById('detail-title').textContent = project.title;
   document.getElementById('detail-summary').textContent = project.summary || '';
@@ -727,6 +888,8 @@ async function loadProjectDetail() {
   detail.hidden = false;
   observeReveals(detail);
 }
+
+loadSiteSettings();
 
 if (page === 'projects') {
   loadProjectsPage();

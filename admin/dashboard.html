@@ -49,6 +49,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16"></path><path d="M9 7V4h6v3"></path><path d="M7 7l1 13h8l1-13"></path><path d="M10 11v5M14 11v5"></path></svg>
           Lixeira
         </button>
+        <button class="admin-nav-item" type="button" data-admin-tab="settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1A1.7 1.7 0 0 0 9 4.6 1.7 1.7 0 0 0 10 3v-.2h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"></path></svg>
+          Configurações
+        </button>
       </nav>
 
       <div class="admin-tip">
@@ -212,6 +216,7 @@
             <option value="project">Projetos</option>
             <option value="agenda">Agenda</option>
             <option value="playlist">Playlists</option>
+            <option value="settings">Configurações</option>
           </select>
           <select id="history-action-filter" aria-label="Filtrar histórico por ação">
             <option value="todos">Todas as ações</option>
@@ -273,6 +278,118 @@
         <div id="trash-admin-loading" class="admin-list-state">Carregando lixeira...</div>
         <div id="trash-admin-empty" class="admin-list-state" hidden>A lixeira está vazia.</div>
         <div id="trash-admin-list" class="trash-list"></div>
+      </section>
+
+      <section id="settings-panel" class="admin-panel" data-panel="settings">
+        <div class="settings-heading-row">
+          <div>
+            <p class="admin-kicker">Controle do site público</p>
+            <h2 class="settings-page-title">Configurações do site</h2>
+            <p class="settings-page-copy">Atualize textos, contatos e seções visíveis sem abrir o HTML. As mudanças aparecem no site depois de salvar.</p>
+          </div>
+          <div class="settings-heading-actions">
+            <a class="admin-btn secondary" href="../index.html" target="_blank" rel="noopener">Abrir site ↗</a>
+            <span id="settings-updated-meta" class="settings-updated-meta">Carregando configurações...</span>
+          </div>
+        </div>
+
+        <form id="site-settings-form" class="settings-form">
+          <article class="settings-card">
+            <header class="settings-card-header">
+              <div><span class="settings-card-icon purple">◎</span><div><h3>Identidade e contato</h3><p>Informações gerais usadas em todas as páginas.</p></div></div>
+            </header>
+            <div class="settings-grid two-columns">
+              <label><span>Nome da marca</span><input name="site_name" type="text" maxlength="60" required></label>
+              <label><span>Título da página inicial</span><input name="site_title" type="text" maxlength="100" required></label>
+              <label class="settings-wide"><span>Descrição para buscadores</span><textarea name="meta_description" rows="3" maxlength="260" required></textarea></label>
+              <label><span>WhatsApp com DDI e DDD</span><input name="whatsapp_number" type="text" inputmode="numeric" maxlength="18" placeholder="5541996600432" required></label>
+              <label><span>Instagram</span><input name="instagram_url" type="url" placeholder="https://www.instagram.com/apollusart/" required></label>
+              <label class="settings-wide"><span>Mensagem padrão do WhatsApp</span><textarea name="whatsapp_message" rows="3" maxlength="500" required></textarea></label>
+              <label><span>Ano do rodapé</span><input name="copyright_year" type="number" min="2024" max="2100" required></label>
+              <label><span>Localização do rodapé</span><input name="footer_location" type="text" maxlength="80" placeholder="Curitiba-PR" required></label>
+            </div>
+          </article>
+
+          <article class="settings-card">
+            <header class="settings-card-header">
+              <div><span class="settings-card-icon yellow">✦</span><div><h3>Página inicial</h3><p>Textos principais da apresentação da Apollus.</p></div></div>
+            </header>
+            <div class="settings-grid two-columns">
+              <label class="settings-wide"><span>Texto superior do destaque</span><input name="hero_eyebrow" type="text" maxlength="100" required></label>
+              <label><span>Título — primeira linha</span><input name="hero_title_line1" type="text" maxlength="60" required></label>
+              <label><span>Palavra em destaque</span><input name="hero_title_highlight" type="text" maxlength="40" required></label>
+              <label><span>Conector</span><input name="hero_title_connector" type="text" maxlength="20" required></label>
+              <label><span>Título — última linha</span><input name="hero_title_line3" type="text" maxlength="60" required></label>
+              <label class="settings-wide"><span>Texto de apresentação</span><textarea name="hero_text" rows="4" maxlength="420" required></textarea></label>
+              <label><span>Botão principal</span><input name="hero_primary_label" type="text" maxlength="60" required></label>
+              <label><span>Botão secundário</span><input name="hero_secondary_label" type="text" maxlength="60" required></label>
+            </div>
+          </article>
+
+          <article class="settings-card">
+            <header class="settings-card-header">
+              <div><span class="settings-card-icon cyan">↗</span><div><h3>Sobre e chamada final</h3><p>Ajuste o posicionamento da marca e o convite de contato.</p></div></div>
+            </header>
+            <div class="settings-grid two-columns">
+              <label class="settings-wide"><span>Título da seção Sobre</span><input name="about_title" type="text" maxlength="140" required></label>
+              <label class="settings-wide"><span>Primeiro parágrafo</span><textarea name="about_text_1" rows="4" maxlength="600" required></textarea></label>
+              <label class="settings-wide"><span>Segundo parágrafo</span><textarea name="about_text_2" rows="4" maxlength="600" required></textarea></label>
+              <label><span>Chamada superior</span><input name="cta_kicker" type="text" maxlength="60" required></label>
+              <label><span>Título final</span><input name="cta_title" type="text" maxlength="140" required></label>
+              <label class="settings-wide"><span>Texto final</span><textarea name="cta_text" rows="3" maxlength="420" required></textarea></label>
+              <label><span>Texto do botão final</span><input name="cta_button_label" type="text" maxlength="60" required></label>
+            </div>
+          </article>
+
+          <article class="settings-card">
+            <header class="settings-card-header">
+              <div><span class="settings-card-icon pink">▢</span><div><h3>Página de projetos</h3><p>Textos do portfólio, playlists e agenda pública.</p></div></div>
+            </header>
+            <div class="settings-grid two-columns">
+              <label><span>Texto superior</span><input name="projects_hero_eyebrow" type="text" maxlength="80" required></label>
+              <label><span>Título — primeira linha</span><input name="projects_hero_line1" type="text" maxlength="80" required></label>
+              <label><span>Título em destaque</span><input name="projects_hero_highlight" type="text" maxlength="80" required></label>
+              <label class="settings-wide"><span>Introdução</span><textarea name="projects_hero_text" rows="3" maxlength="420" required></textarea></label>
+              <label><span>Título do portfólio</span><input name="portfolio_title" type="text" maxlength="100" required></label>
+              <label><span>Título das playlists</span><input name="playlist_title" type="text" maxlength="120" required></label>
+              <label class="settings-wide"><span>Descrição do portfólio</span><textarea name="portfolio_text" rows="3" maxlength="420" required></textarea></label>
+              <label class="settings-wide"><span>Descrição das playlists</span><textarea name="playlist_text" rows="3" maxlength="420" required></textarea></label>
+              <label><span>Título de próximos acontecimentos</span><input name="upcoming_title" type="text" maxlength="120" required></label>
+              <label><span>Título do calendário</span><input name="calendar_heading" type="text" maxlength="120" required></label>
+              <label class="settings-wide"><span>Descrição de próximos acontecimentos</span><textarea name="upcoming_text" rows="3" maxlength="420" required></textarea></label>
+              <label class="settings-wide"><span>Descrição do calendário</span><textarea name="calendar_text" rows="3" maxlength="420" required></textarea></label>
+            </div>
+          </article>
+
+          <article class="settings-card">
+            <header class="settings-card-header">
+              <div><span class="settings-card-icon green">◷</span><div><h3>Agenda e visibilidade</h3><p>Controle o chamado comercial e quais áreas aparecem no site.</p></div></div>
+            </header>
+            <div class="settings-grid two-columns">
+              <label><span>Chamada da agenda</span><input name="agenda_kicker" type="text" maxlength="80" required></label>
+              <label><span>Título da agenda</span><input name="agenda_title" type="text" maxlength="140" required></label>
+              <label class="settings-wide"><span>Descrição da agenda</span><textarea name="agenda_text" rows="3" maxlength="420" required></textarea></label>
+              <label><span>Texto do botão</span><input name="agenda_button_label" type="text" maxlength="60" required></label>
+              <label><span>Máximo de projetos exibidos</span><input name="projects_limit" type="number" min="0" max="100" step="1"><small>Use 0 para exibir todos.</small></label>
+              <label><span>Máximo de playlists exibidas</span><input name="playlists_limit" type="number" min="0" max="100" step="1"><small>Use 0 para exibir todas.</small></label>
+            </div>
+            <div class="settings-toggles">
+              <label class="settings-toggle"><input name="agenda_open" type="checkbox"><span><strong>Agenda aberta</strong><small>Mostra “AGENDA ABERTA” na página pública.</small></span></label>
+              <label class="settings-toggle"><input name="show_team" type="checkbox"><span><strong>Exibir equipe</strong><small>Mostra a seção de integrantes na página inicial.</small></span></label>
+              <label class="settings-toggle"><input name="show_playlists" type="checkbox"><span><strong>Exibir playlists</strong><small>Mostra a Curadoria Apollus na página de projetos.</small></span></label>
+              <label class="settings-toggle"><input name="show_agenda" type="checkbox"><span><strong>Exibir agenda pública</strong><small>Mostra próximos acontecimentos, calendário e chamada da agenda.</small></span></label>
+            </div>
+          </article>
+
+          <div class="settings-save-bar">
+            <div><strong>Revise antes de publicar</strong><span>Salvar atualiza o site público imediatamente.</span></div>
+            <div>
+              <button id="site-settings-reset" class="admin-btn secondary" type="button">Restaurar padrões</button>
+              <button id="site-settings-save" class="admin-btn primary" type="submit">Salvar configurações</button>
+            </div>
+            <p id="site-settings-message" class="form-message" aria-live="polite"></p>
+          </div>
+        </form>
       </section>
     </main>
   </div>

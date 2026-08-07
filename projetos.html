@@ -29,7 +29,7 @@
         <a href="index.html#servicos">O que fazemos</a>
         <a href="projetos.html" class="active">Projetos</a>
         <a href="index.html#equipe">Equipe</a>
-        <a href="https://wa.me/5541996600432?text=Olá%20Apollus!%20Gostaria%20de%20conversar%20sobre%20um%20projeto." target="_blank" rel="noopener noreferrer" class="nav-cta">Falar com a Apollus</a>
+        <a href="https://wa.me/5541996600432?text=Olá%20Apollus!%20Gostaria%20de%20conversar%20sobre%20um%20projeto." target="_blank" rel="noopener noreferrer" class="nav-cta" data-whatsapp-link>Falar com a Apollus</a>
       </nav>
     </div>
   </header>
@@ -37,9 +37,9 @@
   <main>
     <section class="projects-hero section-art">
       <div class="container projects-hero-content reveal">
-        <p class="eyebrow">Portfólio e agenda</p>
-        <h1>Projetos que<br><span>saíram do papel.</span></h1>
-        <p>Produções musicais, eventos, projetos culturais, trabalhos artísticos e experiências desenvolvidas pela Apollus.</p>
+        <p id="site-projects-hero-eyebrow" class="eyebrow">Portfólio e agenda</p>
+        <h1 id="site-projects-hero-title">Projetos que<br><span>saíram do papel.</span></h1>
+        <p id="site-projects-hero-text">Produções musicais, eventos, projetos culturais, trabalhos artísticos e experiências desenvolvidas pela Apollus.</p>
 
         <div class="project-filters" aria-label="Filtrar projetos">
           <button class="project-filter active" type="button" data-filter="todos">Todos</button>
@@ -56,8 +56,8 @@
       <div class="container">
         <div class="section-heading reveal">
           <p class="section-kicker">Portfólio</p>
-          <h2>Projetos realizados</h2>
-          <p>Trabalhos que já passaram por nossas mãos, ideias que ganharam forma e experiências que aconteceram de verdade.</p>
+          <h2 id="site-portfolio-title">Projetos realizados</h2>
+          <p id="site-portfolio-text">Trabalhos que já passaram por nossas mãos, ideias que ganharam forma e experiências que aconteceram de verdade.</p>
         </div>
 
         <div id="projects-loading" class="content-state" aria-live="polite">
@@ -79,12 +79,12 @@
       </div>
     </section>
 
-    <section id="playlists" class="section streaming-section section-art">
+    <section id="playlists" data-site-section="playlists" class="section streaming-section section-art">
       <div class="container">
         <div class="section-heading reveal">
           <p class="section-kicker">Curadoria Apollus</p>
-          <h2>Ouça, descubra e fortaleça artistas.</h2>
-          <p>Playlists pensadas para ampliar descobertas, aproximar públicos e gerar novos ciclos de escuta. Siga, salve e compartilhe.</p>
+          <h2 id="site-playlist-title">Ouça, descubra e fortaleça artistas.</h2>
+          <p id="site-playlist-text">Playlists pensadas para ampliar descobertas, aproximar públicos e gerar novos ciclos de escuta. Siga, salve e compartilhe.</p>
         </div>
 
         <div id="playlists-loading" class="content-state dark-state">
@@ -101,12 +101,12 @@
       </div>
     </section>
 
-    <section class="section upcoming-section section-art">
+    <section id="site-upcoming-section" data-site-section="agenda" class="section upcoming-section section-art">
       <div class="container">
         <div class="section-heading reveal">
           <p class="section-kicker">Em movimento</p>
-          <h2>Próximos acontecimentos</h2>
-          <p>Eventos, lançamentos e experiências que já estão sendo preparados.</p>
+          <h2 id="site-upcoming-title">Próximos acontecimentos</h2>
+          <p id="site-upcoming-text">Eventos, lançamentos e experiências que já estão sendo preparados.</p>
         </div>
 
         <div id="upcoming-loading" class="content-state dark-state">
@@ -120,12 +120,12 @@
       </div>
     </section>
 
-    <section class="section calendar-section">
+    <section id="site-calendar-section" data-site-section="agenda" class="section calendar-section">
       <div class="container">
         <div class="section-heading reveal">
           <p class="section-kicker">Agenda virtual</p>
-          <h2>Veja o que está acontecendo.</h2>
-          <p>Navegue pelos meses e abra cada data para consultar detalhes, horários, locais e disponibilidade.</p>
+          <h2 id="site-calendar-heading">Veja o que está acontecendo.</h2>
+          <p id="site-calendar-text">Navegue pelos meses e abra cada data para consultar detalhes, horários, locais e disponibilidade.</p>
         </div>
 
         <div class="calendar-shell reveal">
@@ -150,19 +150,19 @@
       </div>
     </section>
 
-    <section class="section project-agenda">
+    <section id="site-agenda-cta-section" data-site-section="agenda" class="section project-agenda">
       <div class="container agenda-cta-grid">
         <div class="agenda-copy reveal">
-          <p class="section-kicker">Agenda Apollus</p>
-          <h2>Tem uma ideia esperando para acontecer?</h2>
-          <p>Consulte disponibilidade para produções musicais, eventos, projetos culturais, teatro, cursos e experiências criativas.</p>
-          <a href="https://wa.me/5541996600432?text=Olá%20Apollus!%20Gostaria%20de%20consultar%20a%20agenda%20para%20um%20projeto." target="_blank" rel="noopener noreferrer" class="btn btn-dark">Consultar agenda</a>
+          <p id="site-agenda-kicker" class="section-kicker">Agenda Apollus</p>
+          <h2 id="site-agenda-title">Tem uma ideia esperando para acontecer?</h2>
+          <p id="site-agenda-text">Consulte disponibilidade para produções musicais, eventos, projetos culturais, teatro, cursos e experiências criativas.</p>
+          <a href="https://wa.me/5541996600432?text=Olá%20Apollus!%20Gostaria%20de%20consultar%20a%20agenda%20para%20um%20projeto." target="_blank" rel="noopener noreferrer" class="btn btn-dark" data-whatsapp-link id="site-agenda-button">Consultar agenda</a>
         </div>
 
         <div class="agenda-note reveal" aria-hidden="true">
-          <span>AGENDA</span>
-          <strong>ABERTA</strong>
-          <p>para novas ideias</p>
+          <span id="site-agenda-note-title">AGENDA</span>
+          <strong id="site-agenda-note-status">ABERTA</strong>
+          <p id="site-agenda-note-caption">para novas ideias</p>
         </div>
       </div>
     </section>
@@ -186,7 +186,7 @@
       </p>
 
       <nav class="footer-links" aria-label="Links do rodapé">
-        <a class="footer-link instagram" href="https://www.instagram.com/apollusart/" target="_blank" rel="noopener" aria-label="Instagram da Apollus">
+        <a class="footer-link instagram" data-instagram-link href="https://www.instagram.com/apollusart/" target="_blank" rel="noopener" aria-label="Instagram da Apollus">
           <span class="footer-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"></rect><circle cx="12" cy="12" r="4"></circle><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"></circle></svg>
           </span>
@@ -208,7 +208,7 @@
         </a>
       </nav>
 
-      <small class="footer-copy">© 2026 Apollus - Curitiba-PR</small>
+      <small id="site-footer-copy" class="footer-copy">© 2026 Apollus - Curitiba-PR</small>
     </div>
   </footer>
 
