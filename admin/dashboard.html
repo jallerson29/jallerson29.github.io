@@ -12,7 +12,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&amp;family=Inter:wght@400;500;600;700;800&amp;family=Permanent+Marker&amp;display=swap" rel="stylesheet"/>
 <link href="admin.css" rel="stylesheet"/>
 </head>
-<body class="admin-dashboard-body" data-admin-page="dashboard" data-apollus-version="finance-access-v1">
+<body class="admin-dashboard-body" data-admin-page="dashboard" data-apollus-version="admin-sidebar-tips-v1">
 <div class="admin-boot" id="admin-loading">
 <span class="admin-spinner"></span>
 <p>Carregando painel...</p>
@@ -55,13 +55,27 @@
           Configurações
         </button>
 </nav>
-<div class="admin-tip">
+<div class="admin-tip" id="admin-tip-card">
+<div class="admin-tip-heading">
 <span>✦ Dica rápida</span>
-<p>Arraste projetos entre as etapas para atualizar o fluxo.</p>
+<small id="admin-tip-counter">1 / 10</small>
+</div>
+<p aria-live="polite" id="admin-tip-text">Arraste projetos entre as etapas para atualizar o fluxo.</p>
+<div aria-label="Navegar pelas dicas" class="admin-tip-controls">
+<button aria-label="Dica anterior" id="admin-tip-prev" type="button">←</button>
+<div aria-hidden="true" class="admin-tip-progress"><span id="admin-tip-progress"></span></div>
+<button aria-label="Próxima dica" id="admin-tip-next" type="button">→</button>
+</div>
 </div>
 <div class="admin-sidebar-footer">
-<a href="../projetos.html" rel="noopener" target="_blank">Ver página pública ↗</a>
-<button id="logout-button" type="button">Sair</button>
+<a class="sidebar-footer-action public-action" href="../index.html" rel="noopener" target="_blank">
+<svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M14 5h5v5"></path><path d="M10 14 19 5"></path><path d="M19 13v5a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"></path></svg>
+<span>Ver site público</span>
+</a>
+<button class="sidebar-footer-action logout-action" id="logout-button" type="button">
+<svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M10 5H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h5"></path><path d="m15 16 4-4-4-4"></path><path d="M9 12h10"></path></svg>
+<span>Sair do painel</span>
+</button>
 </div>
 </aside>
 <main class="admin-main">

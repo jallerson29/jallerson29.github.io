@@ -191,7 +191,7 @@ function applyAccessVisibility() {
       // applyAccessVisibility e não precisam iniciar uma nova varredura do painel.
       const hasRelevantMutation = mutations.some((mutation) => {
         const target = mutation.target?.nodeType === 1 ? mutation.target : mutation.target?.parentElement;
-        return !target?.closest?.('#admin-user');
+        return !target?.closest?.('#admin-user, .admin-tip');
       });
       if (!hasRelevantMutation || accessRefreshScheduled) return;
 
