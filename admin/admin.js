@@ -10,6 +10,7 @@ const state = {
   projects: [],
   agenda: [],
   playlists: [],
+  presaves: [],
   trashItems: [],
   siteSettings: null,
   siteSettingsRow: null,
@@ -17,6 +18,7 @@ const state = {
   meetingInvites: [],
   editingProject: null,
   editingPlaylist: null,
+  editingPresave: null,
   editingAgenda: null,
   galleryPaths: [],
   galleryToDelete: [],
@@ -74,6 +76,14 @@ const DEFAULT_SITE_SETTINGS = Object.freeze({
   show_agenda: true,
   projects_limit: 0,
   playlists_limit: 0,
+  featured_projects_kicker: 'Destaques Apollus',
+  featured_projects_title: 'Projetos lançados recentemente',
+  show_presaves: true,
+  presaves_limit: 0,
+  presave_eyebrow: 'Lançamentos em preparação',
+  presave_title: 'Pré-save de artistas.',
+  presave_text: 'Garanta os próximos lançamentos da Apollus na sua biblioteca e seja uma das primeiras pessoas a ouvir.',
+  presave_empty_title: 'Novos lançamentos serão anunciados em breve.',
 });
 
 function escapeHtml(value = '') {
@@ -268,7 +278,7 @@ async function initDashboard() {
   document.getElementById('admin-app').hidden = false;
 
   setupDashboardEvents();
-  await Promise.all([loadProjects(), loadAgenda(), loadPlaylists(), loadActivities(), loadAdminContacts(), loadTrash(), loadSiteSettings()]);
+  await Promise.all([loadProjects(), loadAgenda(), loadPlaylists(), loadPresaves(), loadActivities(), loadAdminContacts(), loadTrash(), loadSiteSettings()]);
   renderMeetingInviteeOptions();
   populateHistoryActorFilter();
   populateTrashActorFilter();
@@ -298,14 +308,20 @@ function setupDashboardEvents() {
   document.getElementById('new-agenda-button').addEventListener('click', () => openAgendaForm());
   document.getElementById('new-playlist-button').addEventListener('click', () => openPlaylistForm());
   document.getElementById('overview-new-playlist').addEventListener('click', () => openPlaylistForm());
+  document.getElementById('new-presave-button').addEventListener('click', () => openPresaveForm());
+  document.getElementById('overview-new-presave').addEventListener('click', () => openPresaveForm());
   document.getElementById('project-form').addEventListener('submit', saveProject);
   document.getElementById('playlist-form').addEventListener('submit', savePlaylist);
+  document.getElementById('presave-form').addEventListener('submit', savePresave);
   document.getElementById('agenda-form').addEventListener('submit', saveAgenda);
   document.getElementById('site-settings-form')?.addEventListener('submit', saveSiteSettings);
   document.getElementById('site-settings-reset')?.addEventListener('click', resetSiteSettingsForm);
   document.getElementById('agenda-type').addEventListener('input', updateMeetingFields);
   document.getElementById('meeting-select-all').addEventListener('click', toggleAllMeetingInvitees);
   document.getElementById('project-title').addEventListener('input', autoFillSlug);
+  document.getElementById('presave-artist').addEventListener('input', autoFillPresaveSlug);
+  document.getElementById('presave-title').addEventListener('input', autoFillPresaveSlug);
+  document.getElementById('presave-slug').addEventListener('input', (event) => { event.target.dataset.touched = 'true'; });
 
   document.getElementById('project-search').addEventListener('input', renderProjectsAdmin);
   document.getElementById('project-status-filter').addEventListener('change', renderProjectsAdmin);
@@ -314,6 +330,8 @@ function setupDashboardEvents() {
   document.getElementById('agenda-status-filter').addEventListener('change', renderAgendaAdmin);
   document.getElementById('playlist-search').addEventListener('input', renderPlaylistsAdmin);
   document.getElementById('playlist-platform-filter').addEventListener('change', renderPlaylistsAdmin);
+  document.getElementById('presave-search').addEventListener('input', renderPresavesAdmin);
+  document.getElementById('presave-status-filter').addEventListener('change', renderPresavesAdmin);
   ['history-search', 'history-entity-filter', 'history-action-filter', 'history-actor-filter', 'history-period-filter'].forEach((id) => {
     document.getElementById(id)?.addEventListener(id === 'history-search' ? 'input' : 'change', renderHistory);
   });
@@ -349,7 +367,7 @@ function setupDashboardEvents() {
 }
 
 function switchPanel(panel) {
-  const titles = { overview: 'Visão geral', projects: 'Projetos', playlists: 'Playlists', agenda: 'Agenda', history: 'Histórico', trash: 'Lixeira', settings: 'Configurações' };
+  const titles = { overview: 'Visão geral', projects: 'Projetos', playlists: 'Playlists', presaves: 'Pré-save', agenda: 'Agenda', history: 'Histórico', trash: 'Lixeira', settings: 'Configurações' };
   document.querySelectorAll('[data-admin-tab]').forEach((button) => button.classList.toggle('active', button.dataset.adminTab === panel));
   document.querySelectorAll('[data-panel]').forEach((section) => section.classList.toggle('active', section.dataset.panel === panel));
   document.getElementById('admin-page-title').textContent = titles[panel] || 'Painel';
@@ -631,6 +649,245 @@ function confirmDeletePlaylist(id) {
   });
 }
 
+
+function presaveReleaseTypeLabel(value = '') {
+  return { single: 'Single', ep: 'EP', album: 'Álbum', outro: 'Outro' }[value] || 'Lançamento';
+}
+
+function presaveReleaseDateTime(item = {}) {
+  if (!item.release_date) return null;
+  const time = String(item.release_time || '00:00').slice(0, 5);
+  const suffix = item.timezone === 'America/Sao_Paulo' ? '-03:00' : '';
+  const date = new Date(`${item.release_date}T${time}:00${suffix}`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function presaveAlreadyReleased(item = {}) {
+  const date = presaveReleaseDateTime(item);
+  return date ? Date.now() >= date.getTime() : false;
+}
+
+async function loadPresaves() {
+  const loading = document.getElementById('presaves-admin-loading');
+  const { data, error } = await supabase.from('presave_campaigns').select('*')
+    .is('deleted_at', null)
+    .order('featured', { ascending: false })
+    .order('release_date', { ascending: true })
+    .order('sort_order', { ascending: true });
+  if (loading) loading.hidden = true;
+  if (error) {
+    console.warn('Pré-saves indisponíveis. Execute presave-v1.sql.', error);
+    state.presaves = [];
+    renderPresavesAdmin();
+    return;
+  }
+  state.presaves = data || [];
+  renderPresavesAdmin();
+  renderOverview();
+}
+
+function renderPresavesAdmin() {
+  const list = document.getElementById('presaves-admin-list');
+  const empty = document.getElementById('presaves-admin-empty');
+  if (!list || !empty) return;
+  const search = (document.getElementById('presave-search')?.value || '').trim().toLowerCase();
+  const status = document.getElementById('presave-status-filter')?.value || 'todos';
+  const filtered = state.presaves.filter((item) => {
+    const launched = presaveAlreadyReleased(item);
+    const matchesStatus = status === 'todos'
+      || (status === 'publicado' && item.published)
+      || (status === 'rascunho' && !item.published)
+      || (status === 'proximo' && !launched)
+      || (status === 'lancado' && launched);
+    const haystack = `${item.artist_name || ''} ${item.title || ''} ${item.release_type || ''}`.toLowerCase();
+    return (!search || haystack.includes(search)) && matchesStatus;
+  });
+  const upcoming = state.presaves.filter((item) => !presaveAlreadyReleased(item)).length;
+  document.getElementById('presave-count').textContent = state.presaves.length;
+  document.getElementById('presave-published-count').textContent = state.presaves.filter((item) => item.published).length;
+  document.getElementById('presave-upcoming-count').textContent = upcoming;
+  empty.hidden = filtered.length !== 0;
+  list.innerHTML = filtered.map((item) => {
+    const cover = mediaUrl(item.cover_path);
+    const launched = presaveAlreadyReleased(item);
+    return `<article class="admin-list-item presave-admin-item" data-presave-id="${escapeHtml(item.id)}">
+      <div class="admin-list-thumb presave-admin-thumb">${cover ? `<img src="${escapeHtml(cover)}" alt="">` : '<div class="admin-list-placeholder">PRÉ</div>'}</div>
+      <div class="admin-list-main">
+        <h3>${escapeHtml(item.artist_name)} — ${escapeHtml(item.title)}</h3>
+        <div class="admin-list-meta">
+          <span class="admin-pill presave-pill">${escapeHtml(presaveReleaseTypeLabel(item.release_type))}</span>
+          <span class="admin-pill ${launched ? 'published' : 'stage'}">${launched ? 'Lançado' : 'Pré-save ativo'}</span>
+          <span class="admin-pill ${item.published ? 'published' : 'draft'}">${item.published ? 'Publicado' : 'Rascunho'}</span>
+          ${item.featured ? '<span class="admin-pill stage">Destaque</span>' : ''}
+          <span>${escapeHtml(formatDate(item.release_date))}${item.release_time ? ` • ${escapeHtml(item.release_time.slice(0, 5))}` : ''}</span>
+        </div>
+      </div>
+      <div class="admin-list-actions">
+        <a class="icon-button" href="../presave.html?slug=${encodeURIComponent(item.slug)}" target="_blank" rel="noopener" title="Abrir página pública">↗</a>
+        <button class="icon-button" type="button" data-presave-toggle="${escapeHtml(item.id)}" title="${item.published ? 'Ocultar' : 'Publicar'}">${item.published ? eyeOffIcon() : eyeIcon()}</button>
+        <button class="icon-button" type="button" data-presave-edit="${escapeHtml(item.id)}" title="Editar">${editIcon()}</button>
+        <button class="icon-button delete" type="button" data-presave-delete="${escapeHtml(item.id)}" title="Mover para a lixeira">${trashIcon()}</button>
+      </div>
+    </article>`;
+  }).join('');
+  list.querySelectorAll('[data-presave-edit]').forEach((button) => button.addEventListener('click', () => openPresaveForm(button.dataset.presaveEdit)));
+  list.querySelectorAll('[data-presave-delete]').forEach((button) => button.addEventListener('click', () => confirmDeletePresave(button.dataset.presaveDelete)));
+  list.querySelectorAll('[data-presave-toggle]').forEach((button) => button.addEventListener('click', () => togglePresavePublished(button.dataset.presaveToggle)));
+}
+
+function resetPresaveForm() {
+  const form = document.getElementById('presave-form');
+  form.reset();
+  document.getElementById('presave-id').value = '';
+  document.getElementById('presave-release-type').value = 'single';
+  document.getElementById('presave-release-time').value = '00:00';
+  document.getElementById('presave-timezone').value = 'America/Sao_Paulo';
+  document.getElementById('presave-sort-order').value = '0';
+  document.getElementById('presave-published').checked = true;
+  document.getElementById('presave-cover-current').textContent = 'Nenhuma capa enviada.';
+  document.getElementById('presave-slug').dataset.touched = '';
+  state.editingPresave = null;
+  setMessage(document.getElementById('presave-form-message'));
+}
+
+function autoFillPresaveSlug() {
+  const slugInput = document.getElementById('presave-slug');
+  if (!slugInput || slugInput.dataset.touched === 'true') return;
+  const artist = document.getElementById('presave-artist').value;
+  const title = document.getElementById('presave-title').value;
+  slugInput.value = slugify(`${artist} ${title}`);
+}
+
+function openPresaveForm(id = '') {
+  resetPresaveForm();
+  const item = state.presaves.find((campaign) => campaign.id === id);
+  if (item) {
+    state.editingPresave = item;
+    document.getElementById('presave-dialog-title').textContent = 'Editar pré-save';
+    document.getElementById('presave-id').value = item.id;
+    document.getElementById('presave-artist').value = item.artist_name || '';
+    document.getElementById('presave-title').value = item.title || '';
+    document.getElementById('presave-slug').value = item.slug || '';
+    document.getElementById('presave-slug').dataset.touched = 'true';
+    document.getElementById('presave-release-type').value = item.release_type || 'single';
+    document.getElementById('presave-release-date').value = item.release_date || '';
+    document.getElementById('presave-release-time').value = item.release_time?.slice(0, 5) || '00:00';
+    document.getElementById('presave-timezone').value = item.timezone || 'America/Sao_Paulo';
+    document.getElementById('presave-sort-order').value = item.sort_order || 0;
+    document.getElementById('presave-description').value = item.description || '';
+    document.getElementById('presave-url').value = item.presave_url || '';
+    document.getElementById('presave-release-url').value = item.release_url || '';
+    document.getElementById('presave-instagram-url').value = item.instagram_url || '';
+    document.getElementById('presave-published').checked = Boolean(item.published);
+    document.getElementById('presave-featured').checked = Boolean(item.featured);
+    document.getElementById('presave-cover-current').textContent = item.cover_path ? 'Capa atual preservada.' : 'Nenhuma capa enviada.';
+  } else {
+    document.getElementById('presave-dialog-title').textContent = 'Novo pré-save';
+  }
+  document.getElementById('presave-dialog').showModal();
+}
+
+async function savePresave(event) {
+  event.preventDefault();
+  const button = document.getElementById('presave-save');
+  const message = document.getElementById('presave-form-message');
+  setMessage(message);
+  setButtonLoading(button, true, 'Salvando...');
+  const uploadedNow = [];
+  try {
+    const old = state.editingPresave;
+    let coverPath = old?.cover_path || null;
+    const filesToDelete = [];
+    const coverFile = document.getElementById('presave-cover-file').files[0];
+    if (document.getElementById('presave-remove-cover').checked && coverPath) {
+      filesToDelete.push(coverPath); coverPath = null;
+    }
+    if (coverFile) {
+      const newPath = await uploadFile(coverFile, 'presaves/covers', 'image');
+      uploadedNow.push(newPath);
+      if (coverPath) filesToDelete.push(coverPath);
+      coverPath = newPath;
+    }
+    const presaveUrl = document.getElementById('presave-url').value.trim();
+    const releaseUrl = document.getElementById('presave-release-url').value.trim();
+    const instagramUrl = document.getElementById('presave-instagram-url').value.trim();
+    [presaveUrl, releaseUrl, instagramUrl].filter(Boolean).forEach((url) => {
+      if (!/^https?:\/\//i.test(url)) throw new Error('Todos os links precisam começar com http:// ou https://.');
+    });
+    const payload = {
+      artist_name: document.getElementById('presave-artist').value.trim(),
+      title: document.getElementById('presave-title').value.trim(),
+      slug: slugify(document.getElementById('presave-slug').value),
+      release_type: document.getElementById('presave-release-type').value,
+      release_date: document.getElementById('presave-release-date').value,
+      release_time: document.getElementById('presave-release-time').value || null,
+      timezone: document.getElementById('presave-timezone').value || 'America/Sao_Paulo',
+      description: document.getElementById('presave-description').value.trim() || null,
+      cover_path: coverPath,
+      presave_url: presaveUrl,
+      release_url: releaseUrl || null,
+      instagram_url: instagramUrl || null,
+      sort_order: Number(document.getElementById('presave-sort-order').value || 0),
+      published: document.getElementById('presave-published').checked,
+      featured: document.getElementById('presave-featured').checked,
+      updated_at: new Date().toISOString(),
+    };
+    if (!payload.artist_name || !payload.title || !payload.slug || !payload.release_date || !payload.presave_url) throw new Error('Preencha artista, título, slug, data e link oficial de pré-save.');
+    const query = old
+      ? supabase.from('presave_campaigns').update(payload).eq('id', old.id).select().single()
+      : supabase.from('presave_campaigns').insert(payload).select().single();
+    const { data, error } = await query;
+    if (error) {
+      if (error.code === '23505') throw new Error('Esse slug já está sendo usado em outra campanha.');
+      throw error;
+    }
+    await removeFiles(filesToDelete);
+    if (old) state.presaves = state.presaves.map((item) => item.id === data.id ? data : item);
+    else state.presaves.unshift(data);
+    state.presaves.sort((a, b) => Number(b.featured) - Number(a.featured) || String(a.release_date).localeCompare(String(b.release_date)) || a.sort_order - b.sort_order);
+    renderPresavesAdmin();
+    await loadActivities();
+    renderOverview();
+    document.getElementById('presave-dialog').close();
+    setGlobalMessage('Campanha de pré-save salva com sucesso.', 'success');
+  } catch (error) {
+    console.error(error);
+    await removeFiles(uploadedNow);
+    setMessage(message, error.message || 'Não foi possível salvar o pré-save.', 'error');
+  } finally {
+    setButtonLoading(button, false);
+  }
+}
+
+async function togglePresavePublished(id) {
+  const item = state.presaves.find((campaign) => campaign.id === id);
+  if (!item) return;
+  const { data, error } = await supabase.from('presave_campaigns').update({ published: !item.published, updated_at: new Date().toISOString() }).eq('id', id).select().single();
+  if (error) return setGlobalMessage('Não foi possível atualizar a publicação do pré-save.', 'error');
+  state.presaves = state.presaves.map((campaign) => campaign.id === id ? data : campaign);
+  renderPresavesAdmin(); await loadActivities(); renderOverview();
+}
+
+function confirmDeletePresave(id) {
+  const item = state.presaves.find((campaign) => campaign.id === id);
+  if (!item) return;
+  confirmAction('Mover pré-save para a lixeira?', `“${item.artist_name} — ${item.title}” ficará oculto e poderá ser restaurado depois.`, async () => {
+    const actor = currentActorDetails();
+    const payload = {
+      deleted_at: new Date().toISOString(), deleted_by: actor.id,
+      deleted_by_name: actor.name, deleted_by_email: actor.email,
+      deleted_previous_published: item.published, published: false,
+      updated_at: new Date().toISOString(),
+    };
+    const { data, error } = await supabase.from('presave_campaigns').update(payload).eq('id', id).select().single();
+    if (error) return setGlobalMessage('Não foi possível mover o pré-save para a lixeira.', 'error');
+    state.presaves = state.presaves.filter((campaign) => campaign.id !== id);
+    state.trashItems.unshift({ ...data, entity_type: 'presave' });
+    renderPresavesAdmin(); renderTrash(); await loadActivities(); renderOverview();
+    setGlobalMessage('Pré-save movido para a lixeira.', 'success');
+  });
+}
+
 async function loadAdminContacts() {
   const { data, error } = await supabase
     .from('admin_contacts')
@@ -748,6 +1005,7 @@ function trashEntityInfo(entityType = '') {
     project: { label: 'Projeto', table: 'projects', icon: '▢', className: 'project' },
     agenda: { label: 'Agenda', table: 'agenda_events', icon: '▣', className: 'agenda' },
     playlist: { label: 'Playlist', table: 'streaming_playlists', icon: '▶', className: 'playlist' },
+    presave: { label: 'Pré-save', table: 'presave_campaigns', icon: '↓', className: 'presave' },
   }[entityType] || null;
 }
 
@@ -755,6 +1013,7 @@ function trashItemMedia(item = {}) {
   if (item.entity_type === 'project') return mediaUrl(item.cover_path);
   if (item.entity_type === 'agenda') return mediaUrl(item.image_path);
   if (item.entity_type === 'playlist') return mediaUrl(item.cover_path);
+  if (item.entity_type === 'presave') return mediaUrl(item.cover_path);
   return '';
 }
 
@@ -764,6 +1023,7 @@ async function loadTrash() {
     supabase.from('projects').select('*').not('deleted_at', 'is', null).order('deleted_at', { ascending: false }),
     supabase.from('agenda_events').select('*').not('deleted_at', 'is', null).order('deleted_at', { ascending: false }),
     supabase.from('streaming_playlists').select('*').not('deleted_at', 'is', null).order('deleted_at', { ascending: false }),
+    supabase.from('presave_campaigns').select('*').not('deleted_at', 'is', null).order('deleted_at', { ascending: false }),
   ]);
 
   if (loading) loading.hidden = true;
@@ -779,6 +1039,7 @@ async function loadTrash() {
     ...(results[0].data || []).map((item) => ({ ...item, entity_type: 'project' })),
     ...(results[1].data || []).map((item) => ({ ...item, entity_type: 'agenda' })),
     ...(results[2].data || []).map((item) => ({ ...item, entity_type: 'playlist' })),
+    ...(results[3].data || []).map((item) => ({ ...item, entity_type: 'presave' })),
   ].sort((a, b) => new Date(b.deleted_at) - new Date(a.deleted_at));
 
   populateTrashActorFilter();
@@ -877,10 +1138,12 @@ async function restoreTrashItem(entityType, id) {
   if (entityType === 'project') state.projects.unshift(data);
   if (entityType === 'agenda') state.agenda.unshift(data);
   if (entityType === 'playlist') state.playlists.unshift(data);
+  if (entityType === 'presave') state.presaves.unshift(data);
 
   renderProjectsAdmin();
   renderAgendaAdmin();
   renderPlaylistsAdmin();
+  renderPresavesAdmin();
   renderTrash();
   await loadActivities();
   renderOverview();
@@ -891,6 +1154,7 @@ function trashMediaPaths(item = {}) {
   if (item.entity_type === 'project') return [item.cover_path, item.audio_path, ...(item.gallery_paths || [])].filter(Boolean);
   if (item.entity_type === 'agenda') return [item.image_path].filter(Boolean);
   if (item.entity_type === 'playlist') return [item.cover_path].filter(Boolean);
+  if (item.entity_type === 'presave') return [item.cover_path].filter(Boolean);
   return [];
 }
 
@@ -989,6 +1253,7 @@ function collectSiteSettingsForm() {
   result.whatsapp_number = String(result.whatsapp_number || '').replace(/\D/g, '');
   result.projects_limit = Math.max(0, Math.min(100, Number(result.projects_limit || 0)));
   result.playlists_limit = Math.max(0, Math.min(100, Number(result.playlists_limit || 0)));
+  result.presaves_limit = Math.max(0, Math.min(100, Number(result.presaves_limit || 0)));
   result.copyright_year = Math.max(2024, Math.min(2100, Number(result.copyright_year || 2026)));
 
   if (result.whatsapp_number.length < 10 || result.whatsapp_number.length > 15) {
@@ -1010,6 +1275,8 @@ function collectSiteSettingsForm() {
     'projects_hero_highlight', 'projects_hero_text', 'portfolio_title', 'portfolio_text',
     'playlist_title', 'playlist_text', 'upcoming_title', 'upcoming_text', 'calendar_heading',
     'calendar_text', 'agenda_kicker', 'agenda_title', 'agenda_text', 'agenda_button_label',
+    'featured_projects_kicker', 'featured_projects_title', 'presave_eyebrow', 'presave_title',
+    'presave_text', 'presave_empty_title',
   ];
   const empty = requiredKeys.find((key) => !String(result[key] || '').trim());
   if (empty) throw new Error('Preencha todos os campos obrigatórios antes de salvar.');
@@ -1086,6 +1353,7 @@ function activityEntity(entityType = '') {
     project: { icon: '▢', type: 'Projeto', className: 'project' },
     agenda: { icon: '▣', type: 'Agenda', className: 'agenda' },
     playlist: { icon: '▶', type: 'Playlist', className: 'playlist' },
+    presave: { icon: '↓', type: 'Pré-save', className: 'presave' },
     settings: { icon: '⚙', type: 'Configurações', className: 'settings' },
   }[entityType] || { icon: '•', type: 'Item', className: 'item' };
 }
@@ -1144,6 +1412,11 @@ function historyFieldLabel(field = '') {
     agenda_title: 'Título da agenda', agenda_text: 'Descrição da agenda', agenda_button_label: 'Botão da agenda',
     agenda_open: 'Agenda aberta', show_team: 'Exibir equipe', show_playlists: 'Exibir playlists', show_agenda: 'Exibir agenda',
     projects_limit: 'Limite de projetos', playlists_limit: 'Limite de playlists',
+    featured_projects_kicker: 'Chamada do carrossel', featured_projects_title: 'Título do carrossel',
+    show_presaves: 'Exibir pré-saves', presaves_limit: 'Limite de pré-saves', presave_eyebrow: 'Pré-save — texto superior',
+    presave_title: 'Pré-save — título', presave_text: 'Pré-save — descrição', presave_empty_title: 'Pré-save — mensagem vazia',
+    release_type: 'Tipo de lançamento', release_date: 'Data de lançamento', release_time: 'Horário de lançamento',
+    presave_url: 'Link de pré-save', release_url: 'Link após lançamento', instagram_url: 'Instagram do artista',
   };
   return labels[field] || field.replaceAll('_', ' ').replace(/^./, (letter) => letter.toUpperCase());
 }
@@ -1295,6 +1568,7 @@ function renderOverview() {
   const upcoming = state.agenda.filter((item) => (item.end_date || item.start_date) >= today && item.status !== 'cancelado' && item.status !== 'realizado').length;
   const available = state.agenda.filter((item) => (item.end_date || item.start_date) >= today && item.status === 'disponivel').length;
   const playlistsPublished = state.playlists.filter((item) => item.published).length;
+  const presavesPublished = state.presaves.filter((item) => item.published).length;
 
   document.getElementById('overview-project-total').textContent = total;
   document.getElementById('overview-published-total').textContent = published;
@@ -1302,6 +1576,8 @@ function renderOverview() {
   document.getElementById('overview-upcoming-total').textContent = upcoming;
   document.getElementById('overview-available-total').textContent = available;
   document.getElementById('overview-playlist-total').textContent = playlistsPublished;
+  const presaveMetric = document.getElementById('overview-presave-total');
+  if (presaveMetric) presaveMetric.textContent = presavesPublished;
   document.getElementById('overview-project-month').textContent = thisMonth ? `+${thisMonth} este mês` : 'Nenhum este mês';
   document.getElementById('overview-published-rate').textContent = total ? `${Math.round((published / total) * 100)}% do total` : '0% do total';
   document.getElementById('overview-draft-rate').textContent = total ? `${Math.round((drafts / total) * 100)}% do total` : '0% do total';
@@ -1347,11 +1623,12 @@ function renderActivity() {
       ...state.projects.map((item) => ({ action: 'updated', entity_type: 'project', entity_title: item.title, created_at: item.updated_at || item.created_at })),
       ...state.agenda.map((item) => ({ action: 'updated', entity_type: 'agenda', entity_title: item.title, created_at: item.updated_at || item.created_at })),
       ...state.playlists.map((item) => ({ action: 'updated', entity_type: 'playlist', entity_title: item.title, created_at: item.updated_at || item.created_at })),
+      ...state.presaves.map((item) => ({ action: 'updated', entity_type: 'presave', entity_title: `${item.artist_name} — ${item.title}`, created_at: item.updated_at || item.created_at })),
     ].filter((item) => item.created_at).sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 6);
   }
 
   if (!items.length) {
-    container.innerHTML = '<div class="empty-mini">A atividade aparecerá quando a equipe editar projetos, agenda ou playlists.</div>';
+    container.innerHTML = '<div class="empty-mini">A atividade aparecerá quando a equipe editar projetos, agenda, playlists ou pré-saves.</div>';
     return;
   }
 

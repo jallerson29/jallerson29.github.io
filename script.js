@@ -80,6 +80,14 @@ const DEFAULT_SITE_SETTINGS = Object.freeze({
   show_agenda: true,
   projects_limit: 0,
   playlists_limit: 0,
+  featured_projects_kicker: 'Destaques Apollus',
+  featured_projects_title: 'Projetos lançados recentemente',
+  show_presaves: true,
+  presaves_limit: 0,
+  presave_eyebrow: 'Lançamentos em preparação',
+  presave_title: 'Pré-save de artistas.',
+  presave_text: 'Garanta os próximos lançamentos da Apollus na sua biblioteca e seja uma das primeiras pessoas a ouvir.',
+  presave_empty_title: 'Novos lançamentos serão anunciados em breve.',
 });
 
 let siteSettings = { ...DEFAULT_SITE_SETTINGS };
@@ -98,6 +106,8 @@ function applySiteSettings(settings = DEFAULT_SITE_SETTINGS) {
 
   if (page === 'home') document.title = siteSettings.site_title;
   if (page === 'projects') document.title = `Projetos | ${siteSettings.site_name}`;
+  if (page === 'presaves') document.title = `Pré-save de artistas | ${siteSettings.site_name}`;
+  if (page === 'presave-detail') document.title = `Pré-save | ${siteSettings.site_name}`;
 
   const whatsappNumber = String(siteSettings.whatsapp_number || '').replace(/\D/g, '');
   const whatsappHref = whatsappNumber
@@ -146,11 +156,24 @@ function applySiteSettings(settings = DEFAULT_SITE_SETTINGS) {
   setSiteText('site-agenda-button', siteSettings.agenda_button_label);
   setSiteText('site-agenda-note-status', siteSettings.agenda_open ? 'ABERTA' : 'CONSULTE');
   setSiteText('site-agenda-note-caption', siteSettings.agenda_open ? 'para novas ideias' : 'novas datas');
+  setSiteText('site-featured-projects-kicker', siteSettings.featured_projects_kicker);
+  setSiteText('featured-projects-title', siteSettings.featured_projects_title);
+  setSiteText('site-presave-eyebrow', siteSettings.presave_eyebrow);
+  const presaveTitle = document.getElementById('site-presave-title');
+  if (presaveTitle) {
+    const title = String(siteSettings.presave_title || 'Pré-save de artistas.');
+    const parts = title.split(/\s+/);
+    const last = parts.pop() || '';
+    presaveTitle.innerHTML = `${escapeHtml(parts.join(' ') || 'Pré-save de')}<br><span>${escapeHtml(last)}</span>`;
+  }
+  setSiteText('site-presave-text', siteSettings.presave_text);
+  setSiteText('site-presave-empty-title', siteSettings.presave_empty_title);
 
   const team = document.querySelector('[data-site-section="team"]');
   if (team) team.hidden = !siteSettings.show_team;
   document.querySelectorAll('[data-site-section="playlists"]').forEach((section) => { section.hidden = !siteSettings.show_playlists; });
   document.querySelectorAll('[data-site-section="agenda"]').forEach((section) => { section.hidden = !siteSettings.show_agenda; });
+  document.querySelectorAll('[data-site-section="presaves"]').forEach((section) => { section.hidden = !siteSettings.show_presaves; });
 }
 
 async function loadSiteSettings() {
@@ -365,6 +388,100 @@ function renderProjectCard(project) {
   `;
 }
 
+
+function featuredProjectCard(project) {
+  const cover = mediaUrl(project.cover_path);
+  const slug = encodeURIComponent(project.slug || project.id);
+  const title = escapeHtml(project.title);
+  const summary = escapeHtml(project.summary || 'Conheça esse projeto desenvolvido pela Apollus.');
+  const externalUrl = safeExternalUrl(project.external_url);
+  const imageMarkup = cover
+    ? `<img src="${escapeHtml(cover)}" alt="${title}" loading="lazy">`
+    : `<div class="featured-project-placeholder"><img src="docs/apollus-logo-transparent.png" alt=""></div>`;
+  return `<article class="featured-project-card" data-featured-project="${escapeHtml(project.id)}">
+    <a class="featured-project-image ${categoryColorClass(project.category)}" href="projeto.html?slug=${slug}">
+      ${imageMarkup}
+      <span class="featured-project-category">${escapeHtml(categoryLabel(project.category))}</span>
+    </a>
+    <div class="featured-project-copy">
+      <h3>${title}</h3>
+      <p>${summary}</p>
+      <div class="featured-project-actions">
+        <a class="featured-project-primary" href="projeto.html?slug=${slug}">Ver projeto →</a>
+        ${externalUrl ? `<a class="featured-project-secondary" href="${escapeHtml(externalUrl)}" target="_blank" rel="noopener noreferrer">▶ ${escapeHtml(project.external_label || 'Ouvir agora')}</a>` : ''}
+      </div>
+    </div>
+  </article>`;
+}
+
+function setupFeaturedProjectsCarousel() {
+  const section = document.getElementById('featured-projects-section');
+  const track = document.getElementById('featured-projects-track');
+  const prev = document.getElementById('featured-projects-prev');
+  const next = document.getElementById('featured-projects-next');
+  const dots = document.getElementById('featured-projects-dots');
+  if (!section || !track || !prev || !next || !dots) return;
+
+  let autoplayId = null;
+  const cards = () => [...track.querySelectorAll('.featured-project-card')];
+  const visibleCards = () => window.innerWidth <= 720 ? 1 : window.innerWidth <= 1100 ? 2 : 3;
+  const maxPage = () => Math.max(0, Math.ceil(cards().length / visibleCards()) - 1);
+  const currentPage = () => {
+    const card = cards()[0];
+    if (!card) return 0;
+    const pageWidth = (card.getBoundingClientRect().width + Number.parseFloat(getComputedStyle(track).gap || 0)) * visibleCards();
+    return Math.max(0, Math.min(maxPage(), Math.round(track.scrollLeft / Math.max(pageWidth, 1))));
+  };
+  const updateDots = () => {
+    const total = maxPage() + 1;
+    const active = currentPage();
+    dots.innerHTML = Array.from({ length: total }, (_, index) => `<button type="button" class="${index === active ? 'active' : ''}" data-featured-page="${index}" aria-label="Ir para o grupo ${index + 1}"></button>`).join('');
+    dots.querySelectorAll('[data-featured-page]').forEach((button) => button.addEventListener('click', () => goToPage(Number(button.dataset.featuredPage))));
+    prev.disabled = active <= 0;
+    next.disabled = active >= maxPage();
+  };
+  const pageStep = () => {
+    const card = cards()[0];
+    if (!card) return track.clientWidth;
+    return (card.getBoundingClientRect().width + Number.parseFloat(getComputedStyle(track).gap || 0)) * visibleCards();
+  };
+  const goToPage = (page) => {
+    track.scrollTo({ left: Math.max(0, Math.min(maxPage(), page)) * pageStep(), behavior: 'smooth' });
+  };
+  const restartAutoplay = () => {
+    window.clearInterval(autoplayId);
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || cards().length <= visibleCards()) return;
+    autoplayId = window.setInterval(() => {
+      const nextPage = currentPage() >= maxPage() ? 0 : currentPage() + 1;
+      goToPage(nextPage);
+    }, 6500);
+  };
+
+  prev.addEventListener('click', () => goToPage(currentPage() - 1));
+  next.addEventListener('click', () => goToPage(currentPage() + 1));
+  track.addEventListener('scroll', () => window.requestAnimationFrame(updateDots), { passive: true });
+  section.addEventListener('pointerenter', () => window.clearInterval(autoplayId));
+  section.addEventListener('pointerleave', restartAutoplay);
+  section.addEventListener('focusin', () => window.clearInterval(autoplayId));
+  section.addEventListener('focusout', restartAutoplay);
+  window.addEventListener('resize', () => { updateDots(); restartAutoplay(); }, { passive: true });
+  document.addEventListener('visibilitychange', () => document.hidden ? window.clearInterval(autoplayId) : restartAutoplay());
+
+  updateDots();
+  restartAutoplay();
+}
+
+function renderFeaturedProjects(projects = []) {
+  const section = document.getElementById('featured-projects-section');
+  const track = document.getElementById('featured-projects-track');
+  if (!section || !track) return;
+  const featured = projects.filter((project) => project.featured).slice(0, 6);
+  section.hidden = featured.length === 0;
+  if (!featured.length) return;
+  track.innerHTML = featured.map(featuredProjectCard).join('');
+  setupFeaturedProjectsCarousel();
+}
+
 async function loadProjectsPage() {
   await loadSiteSettings();
   await ensureSupabase();
@@ -403,6 +520,7 @@ async function loadProjectsPage() {
     return;
   }
 
+  renderFeaturedProjects(data);
   grid.innerHTML = data.map(renderProjectCard).join('');
   observeReveals(grid);
   setupProjectFilters();
@@ -889,6 +1007,173 @@ async function loadProjectDetail() {
   observeReveals(detail);
 }
 
+
+function presaveReleaseDate(campaign = {}) {
+  if (!campaign.release_date) return null;
+  const time = String(campaign.release_time || '00:00').slice(0, 5);
+  const zoneSuffix = campaign.timezone === 'America/Sao_Paulo' ? '-03:00' : '';
+  const date = new Date(`${campaign.release_date}T${time}:00${zoneSuffix}`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function presaveIsReleased(campaign = {}) {
+  const release = presaveReleaseDate(campaign);
+  return release ? Date.now() >= release.getTime() : false;
+}
+
+function presavePrimaryAction(campaign = {}) {
+  const released = presaveIsReleased(campaign);
+  const releaseUrl = safeExternalUrl(campaign.release_url);
+  const presaveUrl = safeExternalUrl(campaign.presave_url);
+  if (released && releaseUrl) return { url: releaseUrl, label: 'Ouvir agora' };
+  return { url: presaveUrl || releaseUrl, label: released ? 'Ouvir lançamento' : 'Fazer pré-save' };
+}
+
+function presaveCard(campaign) {
+  const cover = mediaUrl(campaign.cover_path);
+  const slug = encodeURIComponent(campaign.slug || campaign.id);
+  const action = presavePrimaryAction(campaign);
+  const release = presaveReleaseDate(campaign);
+  const dateLabel = release ? new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }).format(release) : '';
+  const released = presaveIsReleased(campaign);
+  return `<article class="presave-card reveal ${campaign.featured ? 'featured' : ''}">
+    <a class="presave-card-cover" href="presave.html?slug=${slug}">
+      ${cover ? `<img src="${escapeHtml(cover)}" alt="Capa de ${escapeHtml(campaign.title)}" loading="lazy">` : `<div class="presave-card-placeholder"><img src="docs/apollus-logo-transparent.png" alt=""></div>`}
+      <span>${escapeHtml(released ? 'LANÇADO' : 'PRÉ-SAVE')}</span>
+    </a>
+    <div class="presave-card-copy">
+      <p class="presave-card-artist">${escapeHtml(campaign.artist_name)}</p>
+      <h2><a href="presave.html?slug=${slug}">${escapeHtml(campaign.title)}</a></h2>
+      <p class="presave-card-date">${escapeHtml(released ? `Disponível desde ${dateLabel}` : `Lançamento em ${dateLabel}`)}</p>
+      <p>${escapeHtml(campaign.description || 'Participe deste lançamento e acompanhe o trabalho do artista.')}</p>
+      <div class="presave-card-actions">
+        <a class="btn btn-dark" href="presave.html?slug=${slug}">Ver lançamento</a>
+        ${action.url ? `<a class="btn btn-outline" href="${escapeHtml(action.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(action.label)}</a>` : ''}
+      </div>
+    </div>
+  </article>`;
+}
+
+async function loadPresavesPage() {
+  await loadSiteSettings();
+  await ensureSupabase();
+  const grid = document.getElementById('presaves-grid');
+  const loading = document.getElementById('presaves-loading');
+  const errorState = document.getElementById('presaves-error');
+  const emptyState = document.getElementById('presaves-empty');
+  if (!grid) return;
+  if (!siteSettings.show_presaves) {
+    loading.hidden = true;
+    emptyState.hidden = false;
+    return;
+  }
+  if (!isSupabaseConfigured || !supabase) {
+    loading.hidden = true;
+    errorState.hidden = false;
+    return;
+  }
+  let query = supabase.from('presave_campaigns').select('*')
+    .eq('published', true).is('deleted_at', null)
+    .order('featured', { ascending: false })
+    .order('release_date', { ascending: true })
+    .order('sort_order', { ascending: true });
+  if (Number(siteSettings.presaves_limit) > 0) query = query.limit(Number(siteSettings.presaves_limit));
+  const { data, error } = await query;
+  loading.hidden = true;
+  if (error) {
+    console.error('Erro ao carregar pré-saves:', error);
+    errorState.hidden = false;
+    return;
+  }
+  if (!data?.length) {
+    emptyState.hidden = false;
+    return;
+  }
+  const ordered = [...data].sort((a, b) => {
+    const aReleased = presaveIsReleased(a);
+    const bReleased = presaveIsReleased(b);
+    if (aReleased !== bReleased) return aReleased ? 1 : -1;
+    return String(a.release_date).localeCompare(String(b.release_date));
+  });
+  grid.innerHTML = ordered.map(presaveCard).join('');
+  observeReveals(grid);
+}
+
+let presaveCountdownInterval = null;
+function updatePresaveCountdown(campaign) {
+  const countdown = document.getElementById('presave-countdown');
+  const release = presaveReleaseDate(campaign);
+  if (!countdown || !release) return;
+  const difference = Math.max(0, release.getTime() - Date.now());
+  const days = Math.floor(difference / 86400000);
+  const hours = Math.floor((difference % 86400000) / 3600000);
+  const minutes = Math.floor((difference % 3600000) / 60000);
+  const seconds = Math.floor((difference % 60000) / 1000);
+  countdown.querySelector('[data-countdown-days]').textContent = String(days).padStart(2, '0');
+  countdown.querySelector('[data-countdown-hours]').textContent = String(hours).padStart(2, '0');
+  countdown.querySelector('[data-countdown-minutes]').textContent = String(minutes).padStart(2, '0');
+  countdown.querySelector('[data-countdown-seconds]').textContent = String(seconds).padStart(2, '0');
+  countdown.classList.toggle('released', difference === 0);
+  if (difference === 0) {
+    countdown.innerHTML = '<strong>JÁ DISPONÍVEL</strong>';
+    const action = presavePrimaryAction(campaign);
+    const button = document.getElementById('presave-primary-action');
+    if (button) { button.href = action.url || '#'; button.textContent = action.label; }
+    window.clearInterval(presaveCountdownInterval);
+  }
+}
+
+async function loadPresaveDetail() {
+  await loadSiteSettings();
+  await ensureSupabase();
+  const loading = document.getElementById('presave-detail-loading');
+  const errorState = document.getElementById('presave-detail-error');
+  const detail = document.getElementById('presave-detail');
+  const slug = new URLSearchParams(window.location.search).get('slug');
+  if (!slug || !isSupabaseConfigured || !supabase) {
+    loading.hidden = true;
+    errorState.hidden = false;
+    return;
+  }
+  const { data: campaign, error } = await supabase.from('presave_campaigns').select('*')
+    .eq('slug', slug).eq('published', true).is('deleted_at', null).maybeSingle();
+  loading.hidden = true;
+  if (error || !campaign) {
+    if (error) console.error(error);
+    errorState.hidden = false;
+    return;
+  }
+  const cover = mediaUrl(campaign.cover_path);
+  document.title = `${campaign.artist_name} — ${campaign.title} | ${siteSettings.site_name}`;
+  document.getElementById('presave-detail-cover').innerHTML = cover
+    ? `<img src="${escapeHtml(cover)}" alt="Capa de ${escapeHtml(campaign.title)}">`
+    : `<div class="presave-detail-placeholder"><img src="docs/apollus-logo-transparent.png" alt=""></div>`;
+  setSiteText('presave-detail-artist', campaign.artist_name);
+  setSiteText('presave-detail-title', campaign.title);
+  setSiteText('presave-detail-description', campaign.description || 'Participe deste lançamento e acompanhe o trabalho do artista.');
+  const release = presaveReleaseDate(campaign);
+  setSiteText('presave-release-date', release ? `Lançamento: ${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'long', timeStyle: campaign.release_time ? 'short' : undefined }).format(release)}` : 'Data de lançamento em breve');
+  const action = presavePrimaryAction(campaign);
+  const primary = document.getElementById('presave-primary-action');
+  primary.href = action.url || '#';
+  primary.textContent = action.label;
+  primary.hidden = !action.url;
+  const shareButton = document.getElementById('presave-share-button');
+  shareButton.addEventListener('click', async () => {
+    const shareData = { title: `${campaign.artist_name} — ${campaign.title}`, text: `Faça o pré-save de ${campaign.title}, lançamento de ${campaign.artist_name}.`, url: window.location.href };
+    try {
+      if (navigator.share) await navigator.share(shareData);
+      else { await navigator.clipboard.writeText(window.location.href); shareButton.textContent = 'Link copiado!'; setTimeout(() => { shareButton.textContent = 'Compartilhar'; }, 1800); }
+    } catch (shareError) {
+      if (shareError?.name !== 'AbortError') console.warn(shareError);
+    }
+  });
+  detail.hidden = false;
+  updatePresaveCountdown(campaign);
+  presaveCountdownInterval = window.setInterval(() => updatePresaveCountdown(campaign), 1000);
+  observeReveals(detail);
+}
+
 loadSiteSettings();
 
 if (page === 'projects') {
@@ -899,4 +1184,12 @@ if (page === 'projects') {
 
 if (page === 'project-detail') {
   loadProjectDetail();
+}
+
+if (page === 'presaves') {
+  loadPresavesPage();
+}
+
+if (page === 'presave-detail') {
+  loadPresaveDetail();
 }

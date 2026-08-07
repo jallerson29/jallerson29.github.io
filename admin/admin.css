@@ -820,3 +820,62 @@ img { max-width: 100%; display: block; }
   .settings-save-bar > div:nth-child(2) { display: grid; grid-template-columns: 1fr; }
   .settings-save-bar .admin-btn { width: 100%; }
 }
+
+/* ==================================================
+   PRÉ-SAVE — PAINEL ADMINISTRATIVO
+================================================== */
+.admin-btn.presave-accent {
+  background: var(--yellow);
+  color: var(--ink);
+  border-color: var(--ink);
+}
+
+.overview-stat.presave-stat {
+  background: linear-gradient(135deg, rgba(189,135,255,.28), rgba(255,225,45,.34));
+}
+
+.presave-toolbar {
+  grid-template-columns: minmax(260px, 1fr) minmax(210px, 280px);
+}
+
+.presave-admin-intro,
+.presave-form-note {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin: 16px 0 22px;
+  padding: 16px 18px;
+  border: 1.5px solid var(--ink);
+  border-radius: 16px;
+  background: rgba(255,225,45,.22);
+}
+
+.presave-admin-intro {
+  display: grid;
+  gap: 5px;
+}
+
+.presave-admin-intro strong,
+.presave-form-note strong { font-weight: 900; }
+.presave-admin-intro p,
+.presave-form-note { color: #514a45; font-size: .84rem; line-height: 1.55; }
+.presave-admin-intro p { margin: 0; }
+
+.presave-admin-thumb {
+  background: linear-gradient(135deg, rgba(189,135,255,.62), rgba(255,225,45,.72));
+}
+
+.presave-admin-item .admin-list-thumb img { object-fit: cover; }
+.presave-pill { background: rgba(189,135,255,.22); }
+
+.history-entity-badge.presave,
+.trash-thumb.presave {
+  background: rgba(189,135,255,.24);
+  color: #5c2e8b;
+}
+
+.settings-card-icon.purple { background: rgba(189,135,255,.32); }
+
+@media (max-width: 900px) {
+  .presave-toolbar { grid-template-columns: 1fr; }
+}
