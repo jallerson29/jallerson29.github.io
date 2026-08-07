@@ -10,6 +10,7 @@ const state = {
   projects: [],
   agenda: [],
   playlists: [],
+  trashItems: [],
   adminContacts: [],
   meetingInvites: [],
   editingProject: null,
@@ -216,10 +217,12 @@ async function initDashboard() {
   document.getElementById('admin-app').hidden = false;
 
   setupDashboardEvents();
-  await Promise.all([loadProjects(), loadAgenda(), loadPlaylists(), loadActivities(), loadAdminContacts()]);
+  await Promise.all([loadProjects(), loadAgenda(), loadPlaylists(), loadActivities(), loadAdminContacts(), loadTrash()]);
   renderMeetingInviteeOptions();
   populateHistoryActorFilter();
+  populateTrashActorFilter();
   renderHistory();
+  renderTrash();
   renderOverview();
 }
 
@@ -260,6 +263,9 @@ function setupDashboardEvents() {
   ['history-search', 'history-entity-filter', 'history-action-filter', 'history-actor-filter', 'history-period-filter'].forEach((id) => {
     document.getElementById(id)?.addEventListener(id === 'history-search' ? 'input' : 'change', renderHistory);
   });
+  ['trash-search', 'trash-entity-filter', 'trash-actor-filter'].forEach((id) => {
+    document.getElementById(id)?.addEventListener(id === 'trash-search' ? 'input' : 'change', renderTrash);
+  });
 
   document.querySelectorAll('[data-admin-close]').forEach((button) => {
     button.addEventListener('click', () => button.closest('dialog')?.close());
@@ -289,13 +295,14 @@ function setupDashboardEvents() {
 }
 
 function switchPanel(panel) {
-  const titles = { overview: 'Visão geral', projects: 'Projetos', playlists: 'Playlists', agenda: 'Agenda', history: 'Histórico' };
+  const titles = { overview: 'Visão geral', projects: 'Projetos', playlists: 'Playlists', agenda: 'Agenda', history: 'Histórico', trash: 'Lixeira' };
   document.querySelectorAll('[data-admin-tab]').forEach((button) => button.classList.toggle('active', button.dataset.adminTab === panel));
   document.querySelectorAll('[data-panel]').forEach((section) => section.classList.toggle('active', section.dataset.panel === panel));
   document.getElementById('admin-page-title').textContent = titles[panel] || 'Painel';
   document.querySelector('.admin-sidebar')?.classList.remove('open');
   if (panel === 'overview') renderOverview();
   if (panel === 'history') renderHistory();
+  if (panel === 'trash') renderTrash();
 }
 
 async function loadProjects() {
@@ -303,6 +310,7 @@ async function loadProjects() {
   const { data, error } = await supabase
     .from('projects')
     .select('*')
+    .is('deleted_at', null)
     .order('featured', { ascending: false })
     .order('sort_order', { ascending: true })
     .order('created_at', { ascending: false });
@@ -356,7 +364,7 @@ function renderProjectsAdmin() {
         <div class="admin-list-actions">
           <button class="icon-button" type="button" data-project-toggle="${escapeHtml(project.id)}" title="${project.published ? 'Ocultar' : 'Publicar'}">${project.published ? eyeOffIcon() : eyeIcon()}</button>
           <button class="icon-button" type="button" data-project-edit="${escapeHtml(project.id)}" title="Editar">${editIcon()}</button>
-          <button class="icon-button delete" type="button" data-project-delete="${escapeHtml(project.id)}" title="Excluir">${trashIcon()}</button>
+          <button class="icon-button delete" type="button" data-project-delete="${escapeHtml(project.id)}" title="Mover para a lixeira">${trashIcon()}</button>
         </div>
       </article>
     `;
@@ -372,6 +380,7 @@ async function loadPlaylists() {
   const { data, error } = await supabase
     .from('streaming_playlists')
     .select('*')
+    .is('deleted_at', null)
     .order('featured', { ascending: false })
     .order('sort_order', { ascending: true })
     .order('created_at', { ascending: false });
@@ -423,7 +432,7 @@ function renderPlaylistsAdmin() {
           <a class="icon-button" href="${escapeHtml(playlist.playlist_url)}" target="_blank" rel="noopener noreferrer" title="Abrir no streaming">↗</a>
           <button class="icon-button" type="button" data-playlist-toggle="${escapeHtml(playlist.id)}" title="${playlist.published ? 'Ocultar' : 'Publicar'}">${playlist.published ? eyeOffIcon() : eyeIcon()}</button>
           <button class="icon-button" type="button" data-playlist-edit="${escapeHtml(playlist.id)}" title="Editar">${editIcon()}</button>
-          <button class="icon-button delete" type="button" data-playlist-delete="${escapeHtml(playlist.id)}" title="Excluir">${trashIcon()}</button>
+          <button class="icon-button delete" type="button" data-playlist-delete="${escapeHtml(playlist.id)}" title="Mover para a lixeira">${trashIcon()}</button>
         </div>
       </article>`;
   }).join('');
@@ -551,15 +560,20 @@ async function togglePlaylistPublished(id) {
 function confirmDeletePlaylist(id) {
   const playlist = state.playlists.find((item) => item.id === id);
   if (!playlist) return;
-  confirmAction('Excluir playlist?', `“${playlist.title}” será removida da página pública.`, async () => {
-    const { error } = await supabase.from('streaming_playlists').delete().eq('id', id);
-    if (error) return setGlobalMessage('Não foi possível excluir a playlist.', 'error');
-    await removeFiles([playlist.cover_path]);
+  confirmAction('Mover playlist para a lixeira?', `“${playlist.title}” ficará oculta e poderá ser restaurada depois.`, async () => {
+    const actor = currentActorDetails();
+    const payload = {
+      deleted_at: new Date().toISOString(), deleted_by: actor.id,
+      deleted_by_name: actor.name, deleted_by_email: actor.email,
+      deleted_previous_published: playlist.published, published: false,
+      updated_at: new Date().toISOString(),
+    };
+    const { data, error } = await supabase.from('streaming_playlists').update(payload).eq('id', id).select().single();
+    if (error) return setGlobalMessage('Não foi possível mover a playlist para a lixeira.', 'error');
     state.playlists = state.playlists.filter((item) => item.id !== id);
-    renderPlaylistsAdmin();
-    await loadActivities();
-    renderOverview();
-    setGlobalMessage('Playlist excluída.', 'success');
+    state.trashItems.unshift({ ...data, entity_type: 'playlist' });
+    renderPlaylistsAdmin(); renderTrash(); await loadActivities(); renderOverview();
+    setGlobalMessage('Playlist movida para a lixeira.', 'success');
   });
 }
 
@@ -590,6 +604,7 @@ async function loadAgenda() {
     supabase
       .from('agenda_events')
       .select('*')
+      .is('deleted_at', null)
       .order('start_date', { ascending: false })
       .order('start_time', { ascending: true, nullsFirst: false }),
     supabase
@@ -652,7 +667,7 @@ function renderAgendaAdmin() {
         <div class="admin-list-actions">
           <button class="icon-button" type="button" data-agenda-toggle="${escapeHtml(item.id)}" title="${item.published ? 'Ocultar' : 'Publicar'}">${item.published ? eyeOffIcon() : eyeIcon()}</button>
           <button class="icon-button" type="button" data-agenda-edit="${escapeHtml(item.id)}" title="Editar">${editIcon()}</button>
-          <button class="icon-button delete" type="button" data-agenda-delete="${escapeHtml(item.id)}" title="Excluir">${trashIcon()}</button>
+          <button class="icon-button delete" type="button" data-agenda-delete="${escapeHtml(item.id)}" title="Mover para a lixeira">${trashIcon()}</button>
         </div>
       </article>
     `;
@@ -661,6 +676,189 @@ function renderAgendaAdmin() {
   list.querySelectorAll('[data-agenda-edit]').forEach((button) => button.addEventListener('click', () => openAgendaForm(button.dataset.agendaEdit)));
   list.querySelectorAll('[data-agenda-delete]').forEach((button) => button.addEventListener('click', () => confirmDeleteAgenda(button.dataset.agendaDelete)));
   list.querySelectorAll('[data-agenda-toggle]').forEach((button) => button.addEventListener('click', () => toggleAgendaPublished(button.dataset.agendaToggle)));
+}
+
+
+function currentActorDetails() {
+  const user = state.currentSession?.user;
+  const contact = state.adminContacts.find((person) => person.user_id === user?.id);
+  return {
+    id: user?.id || null,
+    name: contact?.name || user?.email || 'Equipe Apollus',
+    email: contact?.email || user?.email || null,
+  };
+}
+
+function trashEntityInfo(entityType = '') {
+  return {
+    project: { label: 'Projeto', table: 'projects', icon: '▢', className: 'project' },
+    agenda: { label: 'Agenda', table: 'agenda_events', icon: '▣', className: 'agenda' },
+    playlist: { label: 'Playlist', table: 'streaming_playlists', icon: '▶', className: 'playlist' },
+  }[entityType] || null;
+}
+
+function trashItemMedia(item = {}) {
+  if (item.entity_type === 'project') return mediaUrl(item.cover_path);
+  if (item.entity_type === 'agenda') return mediaUrl(item.image_path);
+  if (item.entity_type === 'playlist') return mediaUrl(item.cover_path);
+  return '';
+}
+
+async function loadTrash() {
+  const loading = document.getElementById('trash-admin-loading');
+  const results = await Promise.all([
+    supabase.from('projects').select('*').not('deleted_at', 'is', null).order('deleted_at', { ascending: false }),
+    supabase.from('agenda_events').select('*').not('deleted_at', 'is', null).order('deleted_at', { ascending: false }),
+    supabase.from('streaming_playlists').select('*').not('deleted_at', 'is', null).order('deleted_at', { ascending: false }),
+  ]);
+
+  if (loading) loading.hidden = true;
+  const error = results.find((result) => result.error)?.error;
+  if (error) {
+    console.warn('Lixeira indisponível. Execute trash-v1.sql.', error);
+    state.trashItems = [];
+    renderTrash();
+    return;
+  }
+
+  state.trashItems = [
+    ...(results[0].data || []).map((item) => ({ ...item, entity_type: 'project' })),
+    ...(results[1].data || []).map((item) => ({ ...item, entity_type: 'agenda' })),
+    ...(results[2].data || []).map((item) => ({ ...item, entity_type: 'playlist' })),
+  ].sort((a, b) => new Date(b.deleted_at) - new Date(a.deleted_at));
+
+  populateTrashActorFilter();
+  renderTrash();
+}
+
+function populateTrashActorFilter() {
+  const select = document.getElementById('trash-actor-filter');
+  if (!select) return;
+  const selected = select.value || 'todos';
+  const actors = new Map();
+  state.adminContacts.forEach((contact) => actors.set(contact.user_id, { id: contact.user_id, name: contact.name }));
+  state.trashItems.forEach((item) => {
+    const id = item.deleted_by || item.deleted_by_email || item.deleted_by_name;
+    if (id && !actors.has(id)) actors.set(id, { id, name: item.deleted_by_name || item.deleted_by_email || 'Equipe Apollus' });
+  });
+  select.innerHTML = '<option value="todos">Toda a equipe</option>' + [...actors.values()]
+    .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
+    .map((actor) => `<option value="${escapeHtml(actor.id)}">${escapeHtml(actor.name)}</option>`)
+    .join('');
+  select.value = [...select.options].some((option) => option.value === selected) ? selected : 'todos';
+}
+
+function renderTrash() {
+  const list = document.getElementById('trash-admin-list');
+  const empty = document.getElementById('trash-admin-empty');
+  if (!list || !empty) return;
+
+  const search = (document.getElementById('trash-search')?.value || '').trim().toLowerCase();
+  const entity = document.getElementById('trash-entity-filter')?.value || 'todos';
+  const actor = document.getElementById('trash-actor-filter')?.value || 'todos';
+
+  const filtered = state.trashItems.filter((item) => {
+    const actorId = item.deleted_by || item.deleted_by_email || item.deleted_by_name;
+    const haystack = `${item.title || ''} ${item.deleted_by_name || ''} ${item.deleted_by_email || ''} ${item.entity_type || ''}`.toLowerCase();
+    return (!search || haystack.includes(search))
+      && (entity === 'todos' || item.entity_type === entity)
+      && (actor === 'todos' || actorId === actor);
+  });
+
+  const todayCount = state.trashItems.filter((item) => new Date(item.deleted_at).toDateString() === new Date().toDateString()).length;
+  document.getElementById('trash-count').textContent = state.trashItems.length;
+  document.getElementById('trash-today-count').textContent = todayCount;
+  empty.hidden = filtered.length !== 0;
+
+  list.innerHTML = filtered.map((item) => {
+    const entityInfo = trashEntityInfo(item.entity_type);
+    const media = trashItemMedia(item);
+    const actorName = item.deleted_by_name || item.deleted_by_email || 'Equipe Apollus';
+    return `<article class="trash-item" data-trash-id="${escapeHtml(item.id)}" data-trash-entity="${escapeHtml(item.entity_type)}">
+      <div class="trash-thumb ${escapeHtml(entityInfo.className)}">
+        ${media ? `<img src="${escapeHtml(media)}" alt="">` : `<span>${entityInfo.icon}</span>`}
+      </div>
+      <div class="trash-item-main">
+        <div class="trash-title-row"><h3>${escapeHtml(item.title || 'Sem título')}</h3><time>${escapeHtml(formatDateTime(item.deleted_at))}</time></div>
+        <div class="trash-meta">
+          <span class="history-entity-badge ${entityInfo.className}">${entityInfo.icon} ${escapeHtml(entityInfo.label)}</span>
+          <span>Excluído por <strong>${escapeHtml(actorName)}</strong></span>
+          ${item.deleted_by_email ? `<span>${escapeHtml(item.deleted_by_email)}</span>` : ''}
+        </div>
+        <p>As mídias vinculadas continuam preservadas e serão recuperadas junto com o item.</p>
+      </div>
+      <div class="trash-actions">
+        <button class="admin-btn restore" type="button" data-trash-restore="${escapeHtml(item.id)}" data-trash-entity="${escapeHtml(item.entity_type)}">↺ Restaurar</button>
+        <button class="admin-btn danger permanent" type="button" data-trash-delete="${escapeHtml(item.id)}" data-trash-entity="${escapeHtml(item.entity_type)}">Excluir definitivamente</button>
+      </div>
+    </article>`;
+  }).join('');
+
+  list.querySelectorAll('[data-trash-restore]').forEach((button) => button.addEventListener('click', () => restoreTrashItem(button.dataset.trashEntity, button.dataset.trashRestore)));
+  list.querySelectorAll('[data-trash-delete]').forEach((button) => button.addEventListener('click', () => confirmPermanentDelete(button.dataset.trashEntity, button.dataset.trashDelete)));
+}
+
+function findTrashItem(entityType, id) {
+  return state.trashItems.find((item) => item.entity_type === entityType && item.id === id);
+}
+
+async function restoreTrashItem(entityType, id) {
+  const item = findTrashItem(entityType, id);
+  const entityInfo = trashEntityInfo(entityType);
+  if (!item || !entityInfo) return;
+
+  const payload = {
+    deleted_at: null,
+    deleted_by: null,
+    deleted_by_name: null,
+    deleted_by_email: null,
+    published: Boolean(item.deleted_previous_published),
+    deleted_previous_published: null,
+    updated_at: new Date().toISOString(),
+  };
+  const { data, error } = await supabase.from(entityInfo.table).update(payload).eq('id', id).select().single();
+  if (error) return setGlobalMessage('Não foi possível restaurar o item.', 'error');
+
+  state.trashItems = state.trashItems.filter((trashItem) => !(trashItem.entity_type === entityType && trashItem.id === id));
+  if (entityType === 'project') state.projects.unshift(data);
+  if (entityType === 'agenda') state.agenda.unshift(data);
+  if (entityType === 'playlist') state.playlists.unshift(data);
+
+  renderProjectsAdmin();
+  renderAgendaAdmin();
+  renderPlaylistsAdmin();
+  renderTrash();
+  await loadActivities();
+  renderOverview();
+  setGlobalMessage(`${entityInfo.label} restaurado${entityType === 'playlist' ? 'a' : ''} com sucesso.`, 'success');
+}
+
+function trashMediaPaths(item = {}) {
+  if (item.entity_type === 'project') return [item.cover_path, item.audio_path, ...(item.gallery_paths || [])].filter(Boolean);
+  if (item.entity_type === 'agenda') return [item.image_path].filter(Boolean);
+  if (item.entity_type === 'playlist') return [item.cover_path].filter(Boolean);
+  return [];
+}
+
+function confirmPermanentDelete(entityType, id) {
+  const item = findTrashItem(entityType, id);
+  const entityInfo = trashEntityInfo(entityType);
+  if (!item || !entityInfo) return;
+  confirmAction(
+    'Excluir definitivamente?',
+    `“${item.title || 'Sem título'}” e suas mídias vinculadas serão apagados sem possibilidade de restauração.`,
+    async () => {
+      const paths = trashMediaPaths(item);
+      const { error } = await supabase.from(entityInfo.table).delete().eq('id', id);
+      if (error) return setGlobalMessage('Não foi possível excluir o item definitivamente.', 'error');
+      await removeFiles(paths);
+      state.trashItems = state.trashItems.filter((trashItem) => !(trashItem.entity_type === entityType && trashItem.id === id));
+      renderTrash();
+      await loadActivities();
+      renderOverview();
+      setGlobalMessage('Item excluído definitivamente.', 'success');
+    },
+  );
 }
 
 
@@ -700,6 +898,7 @@ function activityAction(action = '') {
     published: { label: 'Publicou', passive: 'publicado', className: 'published' },
     unpublished: { label: 'Ocultou', passive: 'ocultado', className: 'unpublished' },
     restored: { label: 'Restaurou', passive: 'restaurado', className: 'restored' },
+    permanently_deleted: { label: 'Excluiu definitivamente', passive: 'excluído definitivamente', className: 'permanently-deleted' },
   }[action] || { label: 'Alterou', passive: 'atualizado', className: 'updated' };
 }
 
@@ -727,6 +926,9 @@ function historyFieldLabel(field = '') {
     sort_order: 'Ordem', event_type: 'Tipo', start_date: 'Data inicial', end_date: 'Data final',
     start_time: 'Horário inicial', end_time: 'Horário final', timezone: 'Fuso horário',
     is_meeting: 'Reunião', location: 'Local', image_path: 'Imagem', delivery_status: 'Envio',
+    deleted_at: 'Movido para a lixeira', deleted_by: 'Responsável pela exclusão',
+    deleted_by_name: 'Nome de quem excluiu', deleted_by_email: 'E-mail de quem excluiu',
+    deleted_previous_published: 'Publicação anterior',
   };
   return labels[field] || field.replaceAll('_', ' ').replace(/^./, (letter) => letter.toUpperCase());
 }
@@ -1257,16 +1459,20 @@ function confirmAction(title, text, handler) {
 function confirmDeleteProject(id) {
   const project = state.projects.find((item) => item.id === id);
   if (!project) return;
-  confirmAction('Excluir projeto?', `“${project.title}” será removido do site e os arquivos associados serão apagados.`, async () => {
-    const paths = [project.cover_path, project.audio_path, ...(project.gallery_paths || [])].filter(Boolean);
-    const { error } = await supabase.from('projects').delete().eq('id', id);
-    if (error) return setGlobalMessage('Não foi possível excluir o projeto.', 'error');
-    await removeFiles(paths);
+  confirmAction('Mover projeto para a lixeira?', `“${project.title}” ficará oculto e seus arquivos serão preservados para restauração.`, async () => {
+    const actor = currentActorDetails();
+    const payload = {
+      deleted_at: new Date().toISOString(), deleted_by: actor.id,
+      deleted_by_name: actor.name, deleted_by_email: actor.email,
+      deleted_previous_published: project.published, published: false,
+      updated_at: new Date().toISOString(),
+    };
+    const { data, error } = await supabase.from('projects').update(payload).eq('id', id).select().single();
+    if (error) return setGlobalMessage('Não foi possível mover o projeto para a lixeira.', 'error');
     state.projects = state.projects.filter((item) => item.id !== id);
-    renderProjectsAdmin();
-    await loadActivities();
-    renderOverview();
-    setGlobalMessage('Projeto excluído.', 'success');
+    state.trashItems.unshift({ ...data, entity_type: 'project' });
+    renderProjectsAdmin(); renderTrash(); await loadActivities(); renderOverview();
+    setGlobalMessage('Projeto movido para a lixeira.', 'success');
   });
 }
 
@@ -1516,15 +1722,20 @@ async function toggleAgendaPublished(id) {
 function confirmDeleteAgenda(id) {
   const item = state.agenda.find((agendaItem) => agendaItem.id === id);
   if (!item) return;
-  confirmAction('Excluir data?', `“${item.title}” será removido da agenda pública.`, async () => {
-    const { error } = await supabase.from('agenda_events').delete().eq('id', id);
-    if (error) return setGlobalMessage('Não foi possível excluir a data.', 'error');
-    await removeFiles([item.image_path]);
+  confirmAction('Mover data para a lixeira?', `“${item.title}” ficará oculta e poderá ser restaurada depois.`, async () => {
+    const actor = currentActorDetails();
+    const payload = {
+      deleted_at: new Date().toISOString(), deleted_by: actor.id,
+      deleted_by_name: actor.name, deleted_by_email: actor.email,
+      deleted_previous_published: item.published, published: false,
+      updated_at: new Date().toISOString(),
+    };
+    const { data, error } = await supabase.from('agenda_events').update(payload).eq('id', id).select().single();
+    if (error) return setGlobalMessage('Não foi possível mover a data para a lixeira.', 'error');
     state.agenda = state.agenda.filter((agendaItem) => agendaItem.id !== id);
-    renderAgendaAdmin();
-    await loadActivities();
-    renderOverview();
-    setGlobalMessage('Data excluída.', 'success');
+    state.trashItems.unshift({ ...data, entity_type: 'agenda' });
+    renderAgendaAdmin(); renderTrash(); await loadActivities(); renderOverview();
+    setGlobalMessage('Data movida para a lixeira.', 'success');
   });
 }
 
