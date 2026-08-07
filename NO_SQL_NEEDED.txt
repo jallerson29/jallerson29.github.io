@@ -1,1 +1,1 @@
-NFS-e V2 UI Clean: nenhum SQL novo é necessário. Esta atualização é somente frontend/interface.
+Nenhum SQL novo é necessário para este patch de navegação da NFS-e.

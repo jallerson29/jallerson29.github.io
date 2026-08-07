@@ -1,0 +1,235 @@
+diff -ruN /mnt/data/apollus_nfse_nav_base/apollus_finance_nfse_v2_ui_clean/admin/admin.css /mnt/data/apollus_finance_nfse_v2_ui3_nav/admin/admin.css
+--- /mnt/data/apollus_nfse_nav_base/apollus_finance_nfse_v2_ui_clean/admin/admin.css	2026-08-07 19:58:56.000000000 +0000
++++ /mnt/data/apollus_finance_nfse_v2_ui3_nav/admin/admin.css	2026-08-07 20:44:08.251048459 +0000
+@@ -2781,6 +2781,15 @@
+   color: var(--ink);
+ }
+ 
++.invoice-tab.completed {
++  color: var(--ink);
++}
++
++.invoice-tab.completed span {
++  background: rgba(119,228,223,.58);
++  color: var(--ink);
++}
++
+ .invoice-step {
+   min-height: 0;
+   overflow-y: auto;
+@@ -3029,18 +3038,46 @@
+   display: flex;
+   align-items: center;
+   justify-content: space-between;
+-  gap: 14px;
++  gap: 18px;
+   padding: 14px 18px;
+   border-top: 1px solid var(--line);
+-  background: rgba(255,255,255,.72);
++  background: rgba(255,255,255,.78);
+ }
+ 
+-.invoice-dialog-actions > span {
++.invoice-dialog-progress {
++  min-width: 0;
++  display: grid;
++  gap: 3px;
++}
++
++.invoice-dialog-progress strong {
++  font-size: .72rem;
++  letter-spacing: .04em;
++}
++
++.invoice-dialog-progress span {
+   color: var(--muted);
+-  font-size: .7rem;
++  font-size: .68rem;
+   line-height: 1.35;
+ }
+ 
++.invoice-dialog-navigation {
++  display: flex;
++  align-items: center;
++  justify-content: flex-end;
++  gap: 10px;
++  flex-shrink: 0;
++}
++
++.invoice-next-button {
++  background: white;
++  box-shadow: 3px 3px 0 var(--purple);
++}
++
++.invoice-dialog-navigation .admin-btn[hidden] {
++  display: none !important;
++}
++
+ .invoice-status.nao_necessaria {
+   background: rgba(255,255,255,.06);
+   color: rgba(255,255,255,.45);
+@@ -3079,8 +3116,17 @@
+     align-items: stretch;
+     flex-direction: column;
+   }
+-  .invoice-dialog-actions .admin-btn {
++  .invoice-dialog-navigation {
+     width: 100%;
++    display: grid;
++    grid-template-columns: repeat(2, minmax(0, 1fr));
++  }
++  .invoice-dialog-navigation .admin-btn {
++    width: 100%;
++  }
++  #finance-invoice-prev[hidden] + #finance-invoice-next,
++  #finance-invoice-done:not([hidden]) {
++    grid-column: 1 / -1;
+   }
+ }
+ 
+diff -ruN /mnt/data/apollus_nfse_nav_base/apollus_finance_nfse_v2_ui_clean/admin/dashboard.html /mnt/data/apollus_finance_nfse_v2_ui3_nav/admin/dashboard.html
+--- /mnt/data/apollus_nfse_nav_base/apollus_finance_nfse_v2_ui_clean/admin/dashboard.html	2026-08-07 19:58:56.000000000 +0000
++++ /mnt/data/apollus_finance_nfse_v2_ui3_nav/admin/dashboard.html	2026-08-07 20:44:08.252436560 +0000
+@@ -10,9 +10,9 @@
+ <link href="https://fonts.googleapis.com" rel="preconnect"/>
+ <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+ <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&amp;family=Inter:wght@400;500;600;700;800&amp;family=Permanent+Marker&amp;display=swap" rel="stylesheet"/>
+-<link href="admin.css?v=20260807-stable1-nfse-v2-ui2" rel="stylesheet"/>
++<link href="admin.css?v=20260807-stable1-nfse-v2-ui3-nav" rel="stylesheet"/>
+ </head>
+-<body class="admin-dashboard-body" data-admin-page="dashboard" data-apollus-version="20260807-stable1-nfse-v2-ui2">
++<body class="admin-dashboard-body" data-admin-page="dashboard" data-apollus-version="20260807-stable1-nfse-v2-ui3-nav">
+ <div class="admin-boot" id="admin-loading">
+ <span class="admin-spinner"></span>
+ <p>Carregando painel...</p>
+@@ -873,8 +873,15 @@
+       </section>
+ 
+       <footer class="invoice-dialog-actions">
+-        <span>As alterações desta janela serão gravadas quando você salvar o lançamento.</span>
+-        <button class="admin-btn primary" id="finance-invoice-done" type="button">Concluir dados fiscais</button>
++        <div class="invoice-dialog-progress">
++          <strong id="finance-invoice-step-count">Etapa 1 de 4</strong>
++          <span>Os dados serão gravados quando você salvar o lançamento.</span>
++        </div>
++        <div class="invoice-dialog-navigation" aria-label="Navegação entre etapas da NFS-e">
++          <button class="admin-btn secondary" hidden id="finance-invoice-prev" type="button">← Voltar</button>
++          <button class="admin-btn secondary invoice-next-button" id="finance-invoice-next" type="button">Próxima: Pessoas →</button>
++          <button class="admin-btn primary" hidden id="finance-invoice-done" type="button">Concluir dados fiscais</button>
++        </div>
+       </footer>
+     </div>
+   </div>
+@@ -903,6 +910,6 @@
+ <footer class="dialog-actions"><button class="admin-btn secondary" data-admin-close="" type="button">Cancelar</button><button class="admin-btn danger" id="confirm-action" type="button">Excluir</button></footer>
+ </div>
+ </dialog>
+-<script src="admin.js?v=20260807-stable1-nfse-v2-ui2" type="module"></script><script src="finance.js?v=20260807-stable1-nfse-v2-ui2" type="module"></script>
++<script src="admin.js?v=20260807-stable1-nfse-v2-ui3-nav" type="module"></script><script src="finance.js?v=20260807-stable1-nfse-v2-ui3-nav" type="module"></script>
+ </body>
+ </html>
+diff -ruN /mnt/data/apollus_nfse_nav_base/apollus_finance_nfse_v2_ui_clean/admin/finance.js /mnt/data/apollus_finance_nfse_v2_ui3_nav/admin/finance.js
+--- /mnt/data/apollus_nfse_nav_base/apollus_finance_nfse_v2_ui_clean/admin/finance.js	2026-08-07 19:58:56.000000000 +0000
++++ /mnt/data/apollus_finance_nfse_v2_ui3_nav/admin/finance.js	2026-08-07 20:44:08.252125498 +0000
+@@ -792,19 +792,66 @@
+   });
+ }
+ 
+-function setInvoiceTab(tab = 'identification') {
+-  const allowed = new Set(['identification', 'parties', 'service', 'values']);
+-  const next = allowed.has(tab) ? tab : 'identification';
++const INVOICE_STEPS = Object.freeze([
++  { key: 'identification', label: 'Identificação' },
++  { key: 'parties', label: 'Pessoas' },
++  { key: 'service', label: 'Serviço' },
++  { key: 'values', label: 'Valores e documento' },
++]);
++
++function setInvoiceTab(tab = 'identification', { focus = false } = {}) {
++  const keys = INVOICE_STEPS.map((step) => step.key);
++  const index = Math.max(0, keys.indexOf(tab));
++  const next = keys[index] || 'identification';
++
+   document.querySelectorAll('[data-invoice-tab]').forEach((button) => {
+     const active = button.dataset.invoiceTab === next;
++    const buttonIndex = keys.indexOf(button.dataset.invoiceTab);
+     button.classList.toggle('active', active);
++    button.classList.toggle('completed', buttonIndex >= 0 && buttonIndex < index);
+     button.setAttribute('aria-selected', active ? 'true' : 'false');
++    button.setAttribute('aria-current', active ? 'step' : 'false');
+   });
++
++  let activePanel = null;
+   document.querySelectorAll('[data-invoice-panel]').forEach((panel) => {
+     const active = panel.dataset.invoicePanel === next;
+     panel.hidden = !active;
+     panel.classList.toggle('active', active);
++    if (active) activePanel = panel;
+   });
++
++  const prev = el('finance-invoice-prev');
++  const nextButton = el('finance-invoice-next');
++  const done = el('finance-invoice-done');
++  const counter = el('finance-invoice-step-count');
++
++  if (prev) prev.hidden = index === 0;
++  if (nextButton) {
++    const hasNext = index < INVOICE_STEPS.length - 1;
++    nextButton.hidden = !hasNext;
++    nextButton.textContent = hasNext ? `Próxima: ${INVOICE_STEPS[index + 1].label} →` : '';
++  }
++  if (done) done.hidden = index !== INVOICE_STEPS.length - 1;
++  if (counter) counter.textContent = `Etapa ${index + 1} de ${INVOICE_STEPS.length}`;
++
++  if (activePanel) {
++    activePanel.scrollTop = 0;
++    if (focus) {
++      const heading = activePanel.querySelector('h3');
++      if (heading) {
++        heading.setAttribute('tabindex', '-1');
++        heading.focus({ preventScroll: true });
++      }
++    }
++  }
++}
++
++function moveInvoiceStep(offset) {
++  const active = document.querySelector('[data-invoice-tab].active')?.dataset.invoiceTab || 'identification';
++  const index = INVOICE_STEPS.findIndex((step) => step.key === active);
++  const target = INVOICE_STEPS[Math.min(INVOICE_STEPS.length - 1, Math.max(0, index + offset))];
++  if (target) setInvoiceTab(target.key, { focus: true });
+ }
+ 
+ function updateInvoiceSummary() {
+@@ -1494,8 +1541,10 @@
+ 
+   el('finance-invoice-open')?.addEventListener('click', () => openInvoiceDialog('identification'));
+   el('finance-invoice-dialog-close')?.addEventListener('click', closeInvoiceDialog);
++  el('finance-invoice-prev')?.addEventListener('click', () => moveInvoiceStep(-1));
++  el('finance-invoice-next')?.addEventListener('click', () => moveInvoiceStep(1));
+   el('finance-invoice-done')?.addEventListener('click', closeInvoiceDialog);
+-  document.querySelectorAll('[data-invoice-tab]').forEach((button) => button.addEventListener('click', () => setInvoiceTab(button.dataset.invoiceTab)));
++  document.querySelectorAll('[data-invoice-tab]').forEach((button) => button.addEventListener('click', () => setInvoiceTab(button.dataset.invoiceTab, { focus: true })));
+ 
+   document.querySelectorAll('input[name="finance-invoice-direction-choice"]').forEach((radio) => {
+     radio.addEventListener('change', () => {
+diff -ruN /mnt/data/apollus_nfse_nav_base/apollus_finance_nfse_v2_ui_clean/admin/login.html /mnt/data/apollus_finance_nfse_v2_ui3_nav/admin/login.html
+--- /mnt/data/apollus_nfse_nav_base/apollus_finance_nfse_v2_ui_clean/admin/login.html	2026-08-07 19:58:56.000000000 +0000
++++ /mnt/data/apollus_finance_nfse_v2_ui3_nav/admin/login.html	2026-08-07 20:44:08.252493455 +0000
+@@ -10,7 +10,7 @@
+   <link rel="preconnect" href="https://fonts.googleapis.com">
+   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&family=Permanent+Marker&display=swap" rel="stylesheet">
+-  <link rel="stylesheet" href="admin.css?v=20260807-stable1-nfse-v2-ui2">
++  <link rel="stylesheet" href="admin.css?v=20260807-stable1-nfse-v2-ui3-nav">
+ </head>
+ <body data-admin-page="login" class="admin-login-body">
+   <main class="login-layout">
+@@ -48,6 +48,6 @@
+     </section>
+   </main>
+ 
+-  <script type="module" src="admin.js?v=20260807-stable1-nfse-v2-ui2"></script>
++  <script type="module" src="admin.js?v=20260807-stable1-nfse-v2-ui3-nav"></script>
+ </body>
+ </html>

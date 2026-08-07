@@ -2781,6 +2781,15 @@ img { max-width: 100%; display: block; }
   color: var(--ink);
 }
 
+.invoice-tab.completed {
+  color: var(--ink);
+}
+
+.invoice-tab.completed span {
+  background: rgba(119,228,223,.58);
+  color: var(--ink);
+}
+
 .invoice-step {
   min-height: 0;
   overflow-y: auto;
@@ -3029,16 +3038,44 @@ img { max-width: 100%; display: block; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
+  gap: 18px;
   padding: 14px 18px;
   border-top: 1px solid var(--line);
-  background: rgba(255,255,255,.72);
+  background: rgba(255,255,255,.78);
 }
 
-.invoice-dialog-actions > span {
+.invoice-dialog-progress {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.invoice-dialog-progress strong {
+  font-size: .72rem;
+  letter-spacing: .04em;
+}
+
+.invoice-dialog-progress span {
   color: var(--muted);
-  font-size: .7rem;
+  font-size: .68rem;
   line-height: 1.35;
+}
+
+.invoice-dialog-navigation {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.invoice-next-button {
+  background: white;
+  box-shadow: 3px 3px 0 var(--purple);
+}
+
+.invoice-dialog-navigation .admin-btn[hidden] {
+  display: none !important;
 }
 
 .invoice-status.nao_necessaria {
@@ -3079,8 +3116,17 @@ img { max-width: 100%; display: block; }
     align-items: stretch;
     flex-direction: column;
   }
-  .invoice-dialog-actions .admin-btn {
+  .invoice-dialog-navigation {
     width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .invoice-dialog-navigation .admin-btn {
+    width: 100%;
+  }
+  #finance-invoice-prev[hidden] + #finance-invoice-next,
+  #finance-invoice-done:not([hidden]) {
+    grid-column: 1 / -1;
   }
 }
 

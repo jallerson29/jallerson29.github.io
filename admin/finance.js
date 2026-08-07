@@ -792,19 +792,66 @@ function syncInvoiceDirectionChoices() {
   });
 }
 
-function setInvoiceTab(tab = 'identification') {
-  const allowed = new Set(['identification', 'parties', 'service', 'values']);
-  const next = allowed.has(tab) ? tab : 'identification';
+const INVOICE_STEPS = Object.freeze([
+  { key: 'identification', label: 'Identificação' },
+  { key: 'parties', label: 'Pessoas' },
+  { key: 'service', label: 'Serviço' },
+  { key: 'values', label: 'Valores e documento' },
+]);
+
+function setInvoiceTab(tab = 'identification', { focus = false } = {}) {
+  const keys = INVOICE_STEPS.map((step) => step.key);
+  const index = Math.max(0, keys.indexOf(tab));
+  const next = keys[index] || 'identification';
+
   document.querySelectorAll('[data-invoice-tab]').forEach((button) => {
     const active = button.dataset.invoiceTab === next;
+    const buttonIndex = keys.indexOf(button.dataset.invoiceTab);
     button.classList.toggle('active', active);
+    button.classList.toggle('completed', buttonIndex >= 0 && buttonIndex < index);
     button.setAttribute('aria-selected', active ? 'true' : 'false');
+    button.setAttribute('aria-current', active ? 'step' : 'false');
   });
+
+  let activePanel = null;
   document.querySelectorAll('[data-invoice-panel]').forEach((panel) => {
     const active = panel.dataset.invoicePanel === next;
     panel.hidden = !active;
     panel.classList.toggle('active', active);
+    if (active) activePanel = panel;
   });
+
+  const prev = el('finance-invoice-prev');
+  const nextButton = el('finance-invoice-next');
+  const done = el('finance-invoice-done');
+  const counter = el('finance-invoice-step-count');
+
+  if (prev) prev.hidden = index === 0;
+  if (nextButton) {
+    const hasNext = index < INVOICE_STEPS.length - 1;
+    nextButton.hidden = !hasNext;
+    nextButton.textContent = hasNext ? `Próxima: ${INVOICE_STEPS[index + 1].label} →` : '';
+  }
+  if (done) done.hidden = index !== INVOICE_STEPS.length - 1;
+  if (counter) counter.textContent = `Etapa ${index + 1} de ${INVOICE_STEPS.length}`;
+
+  if (activePanel) {
+    activePanel.scrollTop = 0;
+    if (focus) {
+      const heading = activePanel.querySelector('h3');
+      if (heading) {
+        heading.setAttribute('tabindex', '-1');
+        heading.focus({ preventScroll: true });
+      }
+    }
+  }
+}
+
+function moveInvoiceStep(offset) {
+  const active = document.querySelector('[data-invoice-tab].active')?.dataset.invoiceTab || 'identification';
+  const index = INVOICE_STEPS.findIndex((step) => step.key === active);
+  const target = INVOICE_STEPS[Math.min(INVOICE_STEPS.length - 1, Math.max(0, index + offset))];
+  if (target) setInvoiceTab(target.key, { focus: true });
 }
 
 function updateInvoiceSummary() {
@@ -1494,8 +1541,10 @@ function setupDashboardModuleEvents() {
 
   el('finance-invoice-open')?.addEventListener('click', () => openInvoiceDialog('identification'));
   el('finance-invoice-dialog-close')?.addEventListener('click', closeInvoiceDialog);
+  el('finance-invoice-prev')?.addEventListener('click', () => moveInvoiceStep(-1));
+  el('finance-invoice-next')?.addEventListener('click', () => moveInvoiceStep(1));
   el('finance-invoice-done')?.addEventListener('click', closeInvoiceDialog);
-  document.querySelectorAll('[data-invoice-tab]').forEach((button) => button.addEventListener('click', () => setInvoiceTab(button.dataset.invoiceTab)));
+  document.querySelectorAll('[data-invoice-tab]').forEach((button) => button.addEventListener('click', () => setInvoiceTab(button.dataset.invoiceTab, { focus: true })));
 
   document.querySelectorAll('input[name="finance-invoice-direction-choice"]').forEach((radio) => {
     radio.addEventListener('change', () => {

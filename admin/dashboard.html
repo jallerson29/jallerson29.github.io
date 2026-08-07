@@ -10,9 +10,9 @@
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&amp;family=Inter:wght@400;500;600;700;800&amp;family=Permanent+Marker&amp;display=swap" rel="stylesheet"/>
-<link href="admin.css?v=20260807-stable1-nfse-v2-ui2" rel="stylesheet"/>
+<link href="admin.css?v=20260807-stable1-nfse-v2-ui3-nav" rel="stylesheet"/>
 </head>
-<body class="admin-dashboard-body" data-admin-page="dashboard" data-apollus-version="20260807-stable1-nfse-v2-ui2">
+<body class="admin-dashboard-body" data-admin-page="dashboard" data-apollus-version="20260807-stable1-nfse-v2-ui3-nav">
 <div class="admin-boot" id="admin-loading">
 <span class="admin-spinner"></span>
 <p>Carregando painel...</p>
@@ -873,8 +873,15 @@
       </section>
 
       <footer class="invoice-dialog-actions">
-        <span>As alterações desta janela serão gravadas quando você salvar o lançamento.</span>
-        <button class="admin-btn primary" id="finance-invoice-done" type="button">Concluir dados fiscais</button>
+        <div class="invoice-dialog-progress">
+          <strong id="finance-invoice-step-count">Etapa 1 de 4</strong>
+          <span>Os dados serão gravados quando você salvar o lançamento.</span>
+        </div>
+        <div class="invoice-dialog-navigation" aria-label="Navegação entre etapas da NFS-e">
+          <button class="admin-btn secondary" hidden id="finance-invoice-prev" type="button">← Voltar</button>
+          <button class="admin-btn secondary invoice-next-button" id="finance-invoice-next" type="button">Próxima: Pessoas →</button>
+          <button class="admin-btn primary" hidden id="finance-invoice-done" type="button">Concluir dados fiscais</button>
+        </div>
       </footer>
     </div>
   </div>
@@ -903,6 +910,6 @@
 <footer class="dialog-actions"><button class="admin-btn secondary" data-admin-close="" type="button">Cancelar</button><button class="admin-btn danger" id="confirm-action" type="button">Excluir</button></footer>
 </div>
 </dialog>
-<script src="admin.js?v=20260807-stable1-nfse-v2-ui2" type="module"></script><script src="finance.js?v=20260807-stable1-nfse-v2-ui2" type="module"></script>
+<script src="admin.js?v=20260807-stable1-nfse-v2-ui3-nav" type="module"></script><script src="finance.js?v=20260807-stable1-nfse-v2-ui3-nav" type="module"></script>
 </body>
 </html>
