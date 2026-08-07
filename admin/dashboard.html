@@ -41,6 +41,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"></circle><path d="M9.5 8.5v7l6-3.5z"></path></svg>
           Playlists
         </button>
+        <button class="admin-nav-item" type="button" data-admin-tab="history">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12a9 9 0 1 0 3-6.7"></path><path d="M3 4v5h5M12 7v5l3 2"></path></svg>
+          Histórico
+        </button>
       </nav>
 
       <div class="admin-tip">
@@ -92,7 +96,7 @@
           </article>
 
           <article class="dashboard-card activity-card">
-            <header class="dashboard-card-header"><h2>Atividade recente</h2><span>Últimas alterações</span></header>
+            <header class="dashboard-card-header"><h2>Atividade recente</h2><button type="button" data-go-panel="history">Ver histórico →</button></header>
             <div id="overview-activity" class="activity-list"></div>
           </article>
 
@@ -182,6 +186,51 @@
         <div id="agenda-admin-loading" class="admin-list-state">Carregando agenda...</div>
         <div id="agenda-admin-empty" class="admin-list-state" hidden>Nenhuma data cadastrada.</div>
         <div id="agenda-admin-list" class="admin-list"></div>
+      </section>
+
+      <section id="history-panel" class="admin-panel" data-panel="history">
+        <div class="history-heading-row">
+          <div>
+            <p class="admin-kicker">Auditoria interna</p>
+            <h2 class="history-page-title">Histórico de alterações</h2>
+            <p class="history-page-copy">Acompanhe quem criou, editou, publicou, ocultou ou excluiu conteúdos no painel da Apollus.</p>
+          </div>
+          <div class="stats-grid history-stats">
+            <div class="stat-card"><span>Registros carregados</span><strong id="history-count">0</strong></div>
+            <div class="stat-card"><span>Atividade hoje</span><strong id="history-today-count">0</strong></div>
+          </div>
+        </div>
+
+        <div class="history-toolbar">
+          <label class="search-field history-search"><span class="sr-only">Buscar no histórico</span><input id="history-search" type="search" placeholder="Buscar por pessoa, item ou alteração..."></label>
+          <select id="history-entity-filter" aria-label="Filtrar histórico por conteúdo">
+            <option value="todos">Todos os conteúdos</option>
+            <option value="project">Projetos</option>
+            <option value="agenda">Agenda</option>
+            <option value="playlist">Playlists</option>
+          </select>
+          <select id="history-action-filter" aria-label="Filtrar histórico por ação">
+            <option value="todos">Todas as ações</option>
+            <option value="inserted">Criações</option>
+            <option value="updated">Edições</option>
+            <option value="published">Publicações</option>
+            <option value="unpublished">Ocultações</option>
+            <option value="deleted">Exclusões</option>
+          </select>
+          <select id="history-actor-filter" aria-label="Filtrar histórico por administrador">
+            <option value="todos">Toda a equipe</option>
+          </select>
+          <select id="history-period-filter" aria-label="Filtrar histórico por período">
+            <option value="todos">Todo o período</option>
+            <option value="hoje">Hoje</option>
+            <option value="7">Últimos 7 dias</option>
+            <option value="30">Últimos 30 dias</option>
+          </select>
+        </div>
+
+        <div id="history-admin-loading" class="admin-list-state">Carregando histórico...</div>
+        <div id="history-admin-empty" class="admin-list-state" hidden>Nenhuma atividade encontrada com esses filtros.</div>
+        <div id="history-admin-list" class="history-list"></div>
       </section>
     </main>
   </div>
@@ -341,6 +390,22 @@
       </footer>
       <p id="agenda-form-message" class="form-message" aria-live="polite"></p>
     </form>
+  </dialog>
+
+  <dialog id="history-detail-dialog" class="admin-dialog history-detail-dialog">
+    <div class="admin-dialog-card compact">
+      <header class="dialog-header">
+        <div>
+          <p class="admin-kicker">Detalhes da atividade</p>
+          <h2 id="history-detail-title">Alteração</h2>
+        </div>
+        <button class="dialog-close" type="button" data-admin-close aria-label="Fechar">×</button>
+      </header>
+      <div id="history-detail-content" class="history-detail-content"></div>
+      <footer class="dialog-actions">
+        <button class="admin-btn secondary" type="button" data-admin-close>Fechar</button>
+      </footer>
+    </div>
   </dialog>
 
   <dialog id="confirm-dialog" class="admin-dialog confirm-dialog">

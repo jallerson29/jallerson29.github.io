@@ -401,3 +401,195 @@ img { max-width: 100%; display: block; }
   .meeting-invitee-list { grid-template-columns: 1fr; }
   .mini-action { width: 100%; }
 }
+
+
+/* ==================================================
+   HISTÓRICO DETALHADO — V1
+================================================== */
+.admin-user { display: grid; justify-items: end; gap: 2px; }
+.admin-user strong { font-size: .9rem; }
+.admin-user small { color: var(--muted); font-size: .72rem; }
+
+.history-heading-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 28px;
+  margin-bottom: 26px;
+}
+.history-page-title {
+  margin: 0;
+  font-family: "Bebas Neue", sans-serif;
+  font-size: clamp(3rem, 6vw, 5.8rem);
+  line-height: .9;
+}
+.history-page-copy { max-width: 720px; margin: 14px 0 0; color: var(--muted); line-height: 1.65; }
+.history-stats { flex: 0 0 auto; }
+
+.history-toolbar {
+  display: grid;
+  grid-template-columns: minmax(250px, 1.6fr) repeat(4, minmax(145px, .55fr));
+  gap: 10px;
+  margin-bottom: 22px;
+}
+.history-toolbar input,
+.history-toolbar select {
+  width: 100%;
+  min-height: 48px;
+  border: 2px solid var(--ink);
+  border-radius: 14px;
+  background: rgba(255,255,255,.78);
+  padding: 11px 13px;
+  color: var(--ink);
+  outline: none;
+}
+.history-toolbar input:focus,
+.history-toolbar select:focus { box-shadow: 4px 4px 0 var(--purple); }
+
+.history-list { display: grid; gap: 12px; }
+.history-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  padding: 18px;
+  border: 2px solid var(--ink);
+  border-radius: 22px;
+  background: rgba(255,255,255,.76);
+  box-shadow: 5px 5px 0 var(--ink);
+  transition: transform .22s ease, box-shadow .22s ease, background .22s ease;
+  cursor: pointer;
+}
+.history-item:hover {
+  transform: translate(-3px, -3px);
+  box-shadow: 9px 9px 0 var(--purple);
+  background: white;
+}
+.history-actor-avatar {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border: 2px solid var(--ink);
+  border-radius: 16px;
+  background: var(--yellow);
+  font-family: "Bebas Neue", sans-serif;
+  font-size: 1.45rem;
+}
+.history-item-main { min-width: 0; }
+.history-item-title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
+.history-item h3 { margin: 0; font-size: .98rem; line-height: 1.45; }
+.history-item time { flex: 0 0 auto; color: var(--muted); font-size: .75rem; }
+.history-item-meta,
+.history-change-chips { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; }
+.history-item-meta { margin-top: 8px; color: var(--muted); font-size: .74rem; }
+.history-change-chips { margin-top: 10px; }
+.history-change-chips span {
+  padding: 5px 8px;
+  border: 1px solid rgba(16,16,16,.22);
+  border-radius: 999px;
+  background: var(--paper);
+  font-size: .67rem;
+  font-weight: 700;
+}
+.history-entity-badge,
+.history-action-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--ink);
+  color: var(--ink);
+  font-weight: 800;
+}
+.history-entity-badge.project { background: var(--purple); }
+.history-entity-badge.agenda { background: var(--cyan); }
+.history-entity-badge.playlist { background: #8bf3a8; }
+.history-action-badge.inserted { background: #dff8e8; }
+.history-action-badge.updated { background: #eaf4ff; }
+.history-action-badge.published { background: var(--yellow); }
+.history-action-badge.unpublished { background: #eee; }
+.history-action-badge.deleted { background: #ffe1e1; color: #8b2020; }
+.history-action-badge.restored { background: var(--cyan); }
+.history-open-button {
+  width: 40px;
+  height: 40px;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: var(--ink);
+  color: white;
+  font-size: 1.15rem;
+  transition: transform .2s ease, background .2s ease;
+}
+.history-item:hover .history-open-button { transform: translateX(4px); background: #6f35aa; }
+
+.activity-item-button {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  font: inherit;
+}
+.activity-item-button:hover { background: rgba(189,135,255,.08); }
+
+.history-detail-dialog .admin-dialog-card { width: min(920px, calc(100vw - 30px)); }
+.history-detail-content { display: grid; gap: 24px; }
+.history-detail-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.history-detail-summary > div {
+  display: grid;
+  gap: 5px;
+  padding: 16px;
+  border: 2px solid var(--ink);
+  border-radius: 16px;
+  background: var(--paper-2);
+}
+.history-detail-summary span,
+.history-change-row span {
+  color: var(--muted);
+  font-size: .68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+}
+.history-detail-summary strong { font-size: .95rem; }
+.history-detail-summary small { color: var(--muted); overflow-wrap: anywhere; }
+.history-detail-changes { display: grid; gap: 10px; }
+.history-detail-changes h3 { margin: 0 0 4px; font-family: "Bebas Neue", sans-serif; font-size: 2rem; }
+.history-change-row {
+  display: grid;
+  grid-template-columns: minmax(120px, .55fr) 1fr 1fr;
+  gap: 10px;
+  align-items: stretch;
+  padding: 12px;
+  border: 1px solid rgba(16,16,16,.16);
+  border-radius: 15px;
+}
+.history-change-row > strong { padding: 10px; align-self: center; }
+.history-change-row > div {
+  min-width: 0;
+  padding: 10px;
+  border-radius: 10px;
+  background: rgba(255,255,255,.72);
+}
+.history-change-row p { margin: 5px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: .78rem; line-height: 1.5; }
+
+@media (max-width: 1180px) {
+  .history-toolbar { grid-template-columns: 1fr 1fr 1fr; }
+  .history-search { grid-column: 1 / -1; }
+}
+@media (max-width: 760px) {
+  .history-heading-row { align-items: stretch; flex-direction: column; }
+  .history-toolbar { grid-template-columns: 1fr; }
+  .history-search { grid-column: auto; }
+  .history-item { grid-template-columns: auto minmax(0, 1fr); }
+  .history-open-button { display: none; }
+  .history-item-title-row { flex-direction: column; gap: 6px; }
+  .history-detail-summary { grid-template-columns: 1fr; }
+  .history-change-row { grid-template-columns: 1fr; }
+}

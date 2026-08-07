@@ -19,6 +19,7 @@ const state = {
   galleryToDelete: [],
   confirmHandler: null,
   activities: [],
+  currentSession: null,
   calendarDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
   draggedProjectId: null,
 };
@@ -209,6 +210,7 @@ async function initDashboard() {
     return;
   }
 
+  state.currentSession = session;
   document.getElementById('admin-user').textContent = session.user.email || 'Administrador';
   document.getElementById('admin-loading').hidden = true;
   document.getElementById('admin-app').hidden = false;
@@ -216,6 +218,8 @@ async function initDashboard() {
   setupDashboardEvents();
   await Promise.all([loadProjects(), loadAgenda(), loadPlaylists(), loadActivities(), loadAdminContacts()]);
   renderMeetingInviteeOptions();
+  populateHistoryActorFilter();
+  renderHistory();
   renderOverview();
 }
 
@@ -253,6 +257,9 @@ function setupDashboardEvents() {
   document.getElementById('agenda-status-filter').addEventListener('change', renderAgendaAdmin);
   document.getElementById('playlist-search').addEventListener('input', renderPlaylistsAdmin);
   document.getElementById('playlist-platform-filter').addEventListener('change', renderPlaylistsAdmin);
+  ['history-search', 'history-entity-filter', 'history-action-filter', 'history-actor-filter', 'history-period-filter'].forEach((id) => {
+    document.getElementById(id)?.addEventListener(id === 'history-search' ? 'input' : 'change', renderHistory);
+  });
 
   document.querySelectorAll('[data-admin-close]').forEach((button) => {
     button.addEventListener('click', () => button.closest('dialog')?.close());
@@ -282,12 +289,13 @@ function setupDashboardEvents() {
 }
 
 function switchPanel(panel) {
-  const titles = { overview: 'Visão geral', projects: 'Projetos', playlists: 'Playlists', agenda: 'Agenda' };
+  const titles = { overview: 'Visão geral', projects: 'Projetos', playlists: 'Playlists', agenda: 'Agenda', history: 'Histórico' };
   document.querySelectorAll('[data-admin-tab]').forEach((button) => button.classList.toggle('active', button.dataset.adminTab === panel));
   document.querySelectorAll('[data-panel]').forEach((section) => section.classList.toggle('active', section.dataset.panel === panel));
   document.getElementById('admin-page-title').textContent = titles[panel] || 'Painel';
   document.querySelector('.admin-sidebar')?.classList.remove('open');
   if (panel === 'overview') renderOverview();
+  if (panel === 'history') renderHistory();
 }
 
 async function loadProjects() {
@@ -509,23 +517,6 @@ async function savePlaylist(event) {
     const { data, error } = await query;
     if (error) throw error;
 
-    let emailResult = null;
-    let emailError = null;
-    if (meeting) {
-      const selectedIds = selectedMeetingInviteeIds();
-      if (!selectedIds.length) throw new Error('Selecione pelo menos uma pessoa para a reunião.');
-      await syncMeetingInvites(data.id, selectedIds);
-      if (document.getElementById('agenda-send-invites').checked) {
-        try {
-          emailResult = await sendMeetingInvites(data.id, old ? 'updated' : 'created');
-        } catch (notificationError) {
-          console.error('Erro ao enviar convites:', notificationError);
-          emailError = notificationError;
-        }
-      }
-    } else {
-      await syncMeetingInvites(data.id, []);
-    }
 
     await removeFiles(filesToDelete);
     if (old) state.playlists = state.playlists.map((item) => item.id === data.id ? data : item);
@@ -585,6 +576,12 @@ async function loadAdminContacts() {
     return;
   }
   state.adminContacts = data || [];
+  const currentContact = state.adminContacts.find((contact) => contact.user_id === state.currentSession?.user?.id);
+  if (currentContact) {
+    document.getElementById('admin-user').innerHTML = `<strong>${escapeHtml(currentContact.name)}</strong><small>${escapeHtml(currentContact.email)}</small>`;
+  }
+  populateHistoryActorFilter();
+  renderHistory();
 }
 
 async function loadAgenda() {
@@ -668,18 +665,201 @@ function renderAgendaAdmin() {
 
 
 async function loadActivities() {
+  const loading = document.getElementById('history-admin-loading');
   const { data, error } = await supabase
     .from('activity_log')
     .select('*')
     .order('created_at', { ascending: false })
-    .limit(12);
+    .limit(250);
 
+  if (loading) loading.hidden = true;
   if (error) {
-    console.warn('Atividade recente indisponível. Execute a migração dashboard-v2.sql.', error);
+    console.warn('Histórico indisponível. Execute history-v1.sql.', error);
     state.activities = [];
+    renderHistory();
     return;
   }
   state.activities = data || [];
+  populateHistoryActorFilter();
+  renderHistory();
+}
+
+function activityEntity(entityType = '') {
+  return {
+    project: { icon: '▢', type: 'Projeto', className: 'project' },
+    agenda: { icon: '▣', type: 'Agenda', className: 'agenda' },
+    playlist: { icon: '▶', type: 'Playlist', className: 'playlist' },
+  }[entityType] || { icon: '•', type: 'Item', className: 'item' };
+}
+
+function activityAction(action = '') {
+  return {
+    inserted: { label: 'Criou', passive: 'criado', className: 'inserted' },
+    updated: { label: 'Editou', passive: 'atualizado', className: 'updated' },
+    deleted: { label: 'Excluiu', passive: 'excluído', className: 'deleted' },
+    published: { label: 'Publicou', passive: 'publicado', className: 'published' },
+    unpublished: { label: 'Ocultou', passive: 'ocultado', className: 'unpublished' },
+    restored: { label: 'Restaurou', passive: 'restaurado', className: 'restored' },
+  }[action] || { label: 'Alterou', passive: 'atualizado', className: 'updated' };
+}
+
+function activityActor(item = {}) {
+  const contact = state.adminContacts.find((person) => person.user_id === item.user_id);
+  return {
+    name: item.actor_name || contact?.name || item.actor_email || 'Equipe Apollus',
+    email: item.actor_email || contact?.email || '',
+  };
+}
+
+function activityChanges(item = {}) {
+  if (!item.changes || typeof item.changes !== 'object' || Array.isArray(item.changes)) return {};
+  return item.changes;
+}
+
+function historyFieldLabel(field = '') {
+  const labels = {
+    title: 'Título', slug: 'Slug', category: 'Categoria', status: 'Status', stage: 'Etapa',
+    published: 'Publicação', featured: 'Destaque', project_date: 'Data do projeto',
+    summary: 'Resumo', description: 'Descrição', credits: 'Créditos', video_url: 'Vídeo',
+    external_url: 'Link externo', external_label: 'Texto do botão', cover_path: 'Capa',
+    audio_path: 'Áudio', gallery_paths: 'Galeria', artist_name: 'Artista / curadoria',
+    platform: 'Plataforma', playlist_url: 'Link da playlist', embed_url: 'Link incorporado',
+    sort_order: 'Ordem', event_type: 'Tipo', start_date: 'Data inicial', end_date: 'Data final',
+    start_time: 'Horário inicial', end_time: 'Horário final', timezone: 'Fuso horário',
+    is_meeting: 'Reunião', location: 'Local', image_path: 'Imagem', delivery_status: 'Envio',
+  };
+  return labels[field] || field.replaceAll('_', ' ').replace(/^./, (letter) => letter.toUpperCase());
+}
+
+function historyValue(value) {
+  if (value === null || value === undefined || value === '') return 'Vazio';
+  if (typeof value === 'boolean') return value ? 'Sim' : 'Não';
+  if (Array.isArray(value)) return value.length ? value.join(', ') : 'Nenhum';
+  if (typeof value === 'object') return JSON.stringify(value);
+  return String(value);
+}
+
+function populateHistoryActorFilter() {
+  const select = document.getElementById('history-actor-filter');
+  if (!select) return;
+  const selected = select.value || 'todos';
+  const actors = new Map();
+  state.adminContacts.forEach((contact) => actors.set(contact.user_id, { id: contact.user_id, name: contact.name, email: contact.email }));
+  state.activities.forEach((item) => {
+    const actor = activityActor(item);
+    const id = item.user_id || actor.email || actor.name;
+    if (id && !actors.has(id)) actors.set(id, { id, name: actor.name, email: actor.email });
+  });
+  select.innerHTML = '<option value="todos">Toda a equipe</option>' + [...actors.values()]
+    .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
+    .map((actor) => `<option value="${escapeHtml(actor.id)}">${escapeHtml(actor.name)}</option>`)
+    .join('');
+  select.value = [...select.options].some((option) => option.value === selected) ? selected : 'todos';
+}
+
+function activityMatchesPeriod(item, period) {
+  if (period === 'todos') return true;
+  const created = new Date(item.created_at);
+  if (Number.isNaN(created.getTime())) return false;
+  const now = new Date();
+  if (period === 'hoje') return created.toDateString() === now.toDateString();
+  const days = Number(period);
+  return created >= new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+}
+
+function renderHistory() {
+  const list = document.getElementById('history-admin-list');
+  const empty = document.getElementById('history-admin-empty');
+  if (!list || !empty) return;
+
+  const search = (document.getElementById('history-search')?.value || '').trim().toLowerCase();
+  const entity = document.getElementById('history-entity-filter')?.value || 'todos';
+  const action = document.getElementById('history-action-filter')?.value || 'todos';
+  const actorFilter = document.getElementById('history-actor-filter')?.value || 'todos';
+  const period = document.getElementById('history-period-filter')?.value || 'todos';
+
+  const filtered = state.activities.filter((item) => {
+    const actor = activityActor(item);
+    const fields = Object.keys(activityChanges(item)).map(historyFieldLabel).join(' ');
+    const haystack = `${actor.name} ${actor.email} ${item.entity_title || ''} ${item.entity_type || ''} ${item.action || ''} ${fields}`.toLowerCase();
+    const actorId = item.user_id || actor.email || actor.name;
+    return (!search || haystack.includes(search))
+      && (entity === 'todos' || item.entity_type === entity)
+      && (action === 'todos' || item.action === action)
+      && (actorFilter === 'todos' || actorId === actorFilter)
+      && activityMatchesPeriod(item, period);
+  });
+
+  const todayCount = state.activities.filter((item) => new Date(item.created_at).toDateString() === new Date().toDateString()).length;
+  document.getElementById('history-count').textContent = state.activities.length;
+  document.getElementById('history-today-count').textContent = todayCount;
+  empty.hidden = filtered.length !== 0;
+
+  list.innerHTML = filtered.map((item) => {
+    const actor = activityActor(item);
+    const entityInfo = activityEntity(item.entity_type);
+    const actionInfo = activityAction(item.action);
+    const changes = Object.keys(activityChanges(item));
+    const shown = changes.slice(0, 3);
+    const remainder = Math.max(0, changes.length - shown.length);
+    const initials = actor.name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase() || 'AP';
+    return `<article class="history-item" data-history-open="${escapeHtml(item.id)}">
+      <div class="history-actor-avatar">${escapeHtml(initials)}</div>
+      <div class="history-item-main">
+        <div class="history-item-title-row">
+          <h3><strong>${escapeHtml(actor.name)}</strong> ${escapeHtml(actionInfo.label.toLowerCase())} ${entityInfo.type.toLowerCase()} “${escapeHtml(item.entity_title || 'Sem título')}”.</h3>
+          <time>${escapeHtml(formatDateTime(item.created_at))}</time>
+        </div>
+        <div class="history-item-meta">
+          <span class="history-entity-badge ${entityInfo.className}">${entityInfo.icon} ${escapeHtml(entityInfo.type)}</span>
+          <span class="history-action-badge ${actionInfo.className}">${escapeHtml(actionInfo.label)}</span>
+          ${actor.email ? `<span>${escapeHtml(actor.email)}</span>` : ''}
+        </div>
+        <div class="history-change-chips">
+          ${shown.map((field) => `<span>${escapeHtml(historyFieldLabel(field))}</span>`).join('')}
+          ${remainder ? `<span>+${remainder} alteração${remainder === 1 ? '' : 'ões'}</span>` : ''}
+          ${!changes.length ? '<span>Registro resumido</span>' : ''}
+        </div>
+      </div>
+      <button class="history-open-button" type="button" aria-label="Ver detalhes">→</button>
+    </article>`;
+  }).join('');
+
+  list.querySelectorAll('[data-history-open]').forEach((item) => {
+    item.addEventListener('click', () => openHistoryDetail(item.dataset.historyOpen));
+  });
+}
+
+function openHistoryDetail(id) {
+  const item = state.activities.find((activity) => String(activity.id) === String(id));
+  if (!item) return;
+  const actor = activityActor(item);
+  const entityInfo = activityEntity(item.entity_type);
+  const actionInfo = activityAction(item.action);
+  const changes = Object.entries(activityChanges(item));
+  document.getElementById('history-detail-title').textContent = `${actionInfo.label}: ${item.entity_title || 'Sem título'}`;
+
+  const changesHtml = changes.length ? `<div class="history-detail-changes">
+    <h3>O que mudou</h3>
+    ${changes.map(([field, values]) => {
+      const oldValue = values && typeof values === 'object' ? values.old : null;
+      const newValue = values && typeof values === 'object' ? values.new : values;
+      return `<div class="history-change-row">
+        <strong>${escapeHtml(historyFieldLabel(field))}</strong>
+        <div><span>Antes</span><p>${escapeHtml(historyValue(oldValue))}</p></div>
+        <div><span>Depois</span><p>${escapeHtml(historyValue(newValue))}</p></div>
+      </div>`;
+    }).join('')}
+  </div>` : '<div class="empty-mini">Este é um registro antigo ou resumido, sem comparação campo a campo.</div>';
+
+  document.getElementById('history-detail-content').innerHTML = `
+    <div class="history-detail-summary">
+      <div><span>Administrador</span><strong>${escapeHtml(actor.name)}</strong><small>${escapeHtml(actor.email)}</small></div>
+      <div><span>Conteúdo</span><strong>${escapeHtml(entityInfo.type)}</strong><small>${escapeHtml(item.entity_title || 'Sem título')}</small></div>
+      <div><span>Ação</span><strong>${escapeHtml(actionInfo.label)}</strong><small>${escapeHtml(formatDateTime(item.created_at))}</small></div>
+    </div>
+    ${changesHtml}`;
+  document.getElementById('history-detail-dialog').showModal();
 }
 
 function renderOverview() {
@@ -754,25 +934,24 @@ function renderActivity() {
   }
 
   if (!items.length) {
-    container.innerHTML = '<div class="empty-mini">A atividade aparecerá quando você editar projetos ou agenda.</div>';
+    container.innerHTML = '<div class="empty-mini">A atividade aparecerá quando a equipe editar projetos, agenda ou playlists.</div>';
     return;
   }
 
-  const actionText = { inserted: 'criado', updated: 'atualizado', deleted: 'excluído', published: 'publicado' };
   container.innerHTML = items.slice(0, 6).map((item) => {
-    const entity = {
-      project: { icon: '▢', type: 'Projeto' },
-      agenda: { icon: '▣', type: 'Evento' },
-      playlist: { icon: '▶', type: 'Playlist' },
-    }[item.entity_type] || { icon: '•', type: 'Item' };
-    const icon = entity.icon;
-    const type = entity.type;
-    return `<div class="activity-item">
-      <span class="activity-dot">${icon}</span>
-      <div><h3>${type} “${escapeHtml(item.entity_title || 'Sem título')}” foi ${escapeHtml(actionText[item.action] || 'atualizado')}.</h3><p>por Apollus</p></div>
+    const entity = activityEntity(item.entity_type);
+    const action = activityAction(item.action);
+    const actor = activityActor(item);
+    return `<button type="button" class="activity-item activity-item-button" data-overview-history="${escapeHtml(item.id || '')}">
+      <span class="activity-dot">${entity.icon}</span>
+      <div><h3>${entity.type} “${escapeHtml(item.entity_title || 'Sem título')}” foi ${escapeHtml(action.passive)}.</h3><p>por ${escapeHtml(actor.name)}</p></div>
       <time>${escapeHtml(formatDateTime(item.created_at))}</time>
-    </div>`;
+    </button>`;
   }).join('');
+  container.querySelectorAll('[data-overview-history]').forEach((button) => button.addEventListener('click', () => {
+    if (!button.dataset.overviewHistory) return switchPanel('history');
+    openHistoryDetail(button.dataset.overviewHistory);
+  }));
 }
 
 function renderCalendar() {
@@ -1278,6 +1457,24 @@ async function saveAgenda(event) {
       : supabase.from('agenda_events').insert(payload).select().single();
     const { data, error } = await query;
     if (error) throw error;
+
+    let emailResult = null;
+    let emailError = null;
+    if (meeting) {
+      const selectedIds = selectedMeetingInviteeIds();
+      if (!selectedIds.length) throw new Error('Selecione pelo menos uma pessoa para a reunião.');
+      await syncMeetingInvites(data.id, selectedIds);
+      if (document.getElementById('agenda-send-invites').checked) {
+        try {
+          emailResult = await sendMeetingInvites(data.id, old ? 'updated' : 'created');
+        } catch (notificationError) {
+          console.error('Erro ao enviar convites:', notificationError);
+          emailError = notificationError;
+        }
+      }
+    } else {
+      await syncMeetingInvites(data.id, []);
+    }
 
     await removeFiles(filesToDelete);
     if (old) state.agenda = state.agenda.map((item) => item.id === data.id ? data : item);
