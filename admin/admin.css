@@ -2245,3 +2245,13 @@ img { max-width: 100%; display: block; }
     margin-top: 16px;
   }
 }
+
+
+/* ==========================================================
+   LIXEIRA V2 — FINANCEIRO
+   ========================================================== */
+.history-entity-badge.finance,
+.trash-thumb.finance {
+  background: rgba(255, 225, 45, .42);
+  color: #4d4200;
+}

@@ -176,6 +176,37 @@ function applyAccessVisibility() {
   setSelectOptionAccess('history-entity-filter', 'profile', isOwner() && financeState.mfa.currentLevel === 'aal2');
   setSelectOptionAccess('trash-entity-filter', 'finance', financeVisible);
 
+  const trashViewPermission = {
+    project: 'projects.view',
+    agenda: 'agenda.view',
+    playlist: 'playlists.view',
+    presave: 'presaves.view',
+    finance: 'finance.view',
+  };
+  const trashDeletePermission = {
+    project: 'projects.delete',
+    agenda: 'agenda.delete',
+    playlist: 'playlists.delete',
+    presave: 'presaves.delete',
+    finance: 'finance.delete',
+  };
+
+  document.querySelectorAll('[data-trash-restore]').forEach((node) => {
+    const entity = node.dataset.trashEntity;
+    const moduleVisible = entity === 'finance'
+      ? financeVisible
+      : Boolean(trashViewPermission[entity] && hasPermission(trashViewPermission[entity]));
+    node.hidden = !(hasPermission('trash.restore') && moduleVisible);
+  });
+
+  document.querySelectorAll('[data-trash-delete]').forEach((node) => {
+    const entity = node.dataset.trashEntity;
+    const moduleDelete = entity === 'finance'
+      ? (financeVisible && hasPermission('finance.delete'))
+      : Boolean(trashDeletePermission[entity] && hasPermission(trashDeletePermission[entity]));
+    node.hidden = !(hasPermission('trash.delete') && moduleDelete);
+  });
+
   const userBox = el('admin-user');
   if (userBox) {
     const userHtml = `<strong>${escapeHtml(financeState.profile.display_name || financeState.session.user.email || 'Administrador')}</strong><small>${escapeHtml(roleLabel(financeState.profile.role))}</small>`;
@@ -792,7 +823,7 @@ async function saveFinanceEntry(event) {
         p_entry_id: saved.id, p_count: count, p_first_due_date: payload.due_date, p_interval_months: interval,
       });
       if (installmentError) {
-        await supabase.from('financial_entries').delete().eq('id', saved.id);
+        await supabase.rpc('apollus_cleanup_failed_financial_entry', { target_id: saved.id });
         throw installmentError;
       }
     }
@@ -854,12 +885,13 @@ async function moveFinanceEntryToTrash() {
   const entry = financeState.entries.find((item) => item.id === financeState.editingEntryId);
   if (!entry || !hasPermission('finance.delete')) return;
   if (!window.confirm(`Mover “${entry.description}” para a lixeira?`)) return;
-  const { error } = await supabase.from('financial_entries').update({
-    deleted_at: new Date().toISOString(), deleted_by: financeState.session.user.id,
-    deleted_by_name: financeState.profile.display_name, deleted_by_email: financeState.profile.email,
-    updated_by: financeState.session.user.id,
-  }).eq('id', entry.id);
-  if (error) return notify(error.message || 'Não foi possível mover para a lixeira.', 'error');
+
+  const { data: moved, error } = await supabase.rpc('apollus_soft_delete', {
+    target_entity: 'finance',
+    target_id: entry.id,
+  });
+  if (error || moved !== true) return notify(error?.message || 'Não foi possível mover para a lixeira.', 'error');
+
   el('finance-entry-dialog').close();
   await loadFinanceData();
   window.dispatchEvent(new CustomEvent('apollus-trash-refresh'));

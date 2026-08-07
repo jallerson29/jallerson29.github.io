@@ -407,6 +407,11 @@ function setupDashboardEvents() {
     document.getElementById(id)?.addEventListener(id === 'trash-search' ? 'input' : 'change', renderTrash);
   });
 
+  window.addEventListener('apollus-trash-refresh', async () => {
+    await loadTrash();
+    renderTrash();
+  });
+
   document.querySelectorAll('[data-admin-close]').forEach((button) => {
     button.addEventListener('click', () => button.closest('dialog')?.close());
   });
@@ -702,22 +707,18 @@ function confirmDeletePlaylist(id) {
   const playlist = state.playlists.find((item) => item.id === id);
   if (!playlist) return;
   confirmAction('Mover playlist para a lixeira?', `“${playlist.title}” ficará oculta e poderá ser restaurada depois.`, async () => {
-    const actor = currentActorDetails();
-    const payload = {
-      deleted_at: new Date().toISOString(), deleted_by: actor.id,
-      deleted_by_name: actor.name, deleted_by_email: actor.email,
-      deleted_previous_published: playlist.published, published: false,
-      updated_at: new Date().toISOString(),
-    };
-    const { data, error } = await supabase.from('streaming_playlists').update(payload).eq('id', id).select().single();
-    if (error) return setGlobalMessage('Não foi possível mover a playlist para a lixeira.', 'error');
-    state.playlists = state.playlists.filter((item) => item.id !== id);
-    state.trashItems.unshift({ ...data, entity_type: 'playlist' });
-    renderPlaylistsAdmin(); renderTrash(); await loadActivities(); renderOverview();
+    const { data: moved, error } = await supabase.rpc('apollus_soft_delete', {
+      target_entity: 'playlist',
+      target_id: id,
+    });
+    if (error || moved !== true) return setGlobalMessage(error?.message || 'Não foi possível mover a playlist para a lixeira.', 'error');
+    await loadPlaylists();
+    await loadTrash();
+    await loadActivities();
+    renderOverview();
     setGlobalMessage('Playlist movida para a lixeira.', 'success');
   });
 }
-
 
 function presaveReleaseTypeLabel(value = '') {
   return { single: 'Single', ep: 'EP', album: 'Álbum', outro: 'Outro' }[value] || 'Lançamento';
@@ -941,18 +942,15 @@ function confirmDeletePresave(id) {
   const item = state.presaves.find((campaign) => campaign.id === id);
   if (!item) return;
   confirmAction('Mover pré-save para a lixeira?', `“${item.artist_name} — ${item.title}” ficará oculto e poderá ser restaurado depois.`, async () => {
-    const actor = currentActorDetails();
-    const payload = {
-      deleted_at: new Date().toISOString(), deleted_by: actor.id,
-      deleted_by_name: actor.name, deleted_by_email: actor.email,
-      deleted_previous_published: item.published, published: false,
-      updated_at: new Date().toISOString(),
-    };
-    const { data, error } = await supabase.from('presave_campaigns').update(payload).eq('id', id).select().single();
-    if (error) return setGlobalMessage('Não foi possível mover o pré-save para a lixeira.', 'error');
-    state.presaves = state.presaves.filter((campaign) => campaign.id !== id);
-    state.trashItems.unshift({ ...data, entity_type: 'presave' });
-    renderPresavesAdmin(); renderTrash(); await loadActivities(); renderOverview();
+    const { data: moved, error } = await supabase.rpc('apollus_soft_delete', {
+      target_entity: 'presave',
+      target_id: id,
+    });
+    if (error || moved !== true) return setGlobalMessage(error?.message || 'Não foi possível mover o pré-save para a lixeira.', 'error');
+    await loadPresaves();
+    await loadTrash();
+    await loadActivities();
+    renderOverview();
     setGlobalMessage('Pré-save movido para a lixeira.', 'success');
   });
 }
@@ -1075,6 +1073,7 @@ function trashEntityInfo(entityType = '') {
     agenda: { label: 'Agenda', table: 'agenda_events', icon: '▣', className: 'agenda' },
     playlist: { label: 'Playlist', table: 'streaming_playlists', icon: '▶', className: 'playlist' },
     presave: { label: 'Pré-save', table: 'presave_campaigns', icon: '↓', className: 'presave' },
+    finance: { label: 'Financeiro', table: 'financial_entries', icon: 'R$', className: 'finance' },
   }[entityType] || null;
 }
 
@@ -1093,12 +1092,16 @@ async function loadTrash() {
     supabase.from('agenda_events').select('*').not('deleted_at', 'is', null).order('deleted_at', { ascending: false }),
     supabase.from('streaming_playlists').select('*').not('deleted_at', 'is', null).order('deleted_at', { ascending: false }),
     supabase.from('presave_campaigns').select('*').not('deleted_at', 'is', null).order('deleted_at', { ascending: false }),
+    supabase.from('financial_entries')
+      .select('id, description, entry_type, amount_total, deleted_at, deleted_by, deleted_by_name, deleted_by_email')
+      .not('deleted_at', 'is', null)
+      .order('deleted_at', { ascending: false }),
   ]);
 
   if (loading) loading.hidden = true;
   const error = results.find((result) => result.error)?.error;
   if (error) {
-    console.warn('Lixeira indisponível. Execute trash-v1.sql.', error);
+    console.warn('Lixeira indisponível. Execute trash-security-v2.sql.', error);
     state.trashItems = [];
     renderTrash();
     return;
@@ -1109,6 +1112,7 @@ async function loadTrash() {
     ...(results[1].data || []).map((item) => ({ ...item, entity_type: 'agenda' })),
     ...(results[2].data || []).map((item) => ({ ...item, entity_type: 'playlist' })),
     ...(results[3].data || []).map((item) => ({ ...item, entity_type: 'presave' })),
+    ...(results[4].data || []).map((item) => ({ ...item, title: item.description, entity_type: 'finance' })),
   ].sort((a, b) => new Date(b.deleted_at) - new Date(a.deleted_at));
 
   populateTrashActorFilter();
@@ -1186,34 +1190,29 @@ function findTrashItem(entityType, id) {
   return state.trashItems.find((item) => item.entity_type === entityType && item.id === id);
 }
 
+async function refreshEntityAfterTrashOperation(entityType) {
+  if (entityType === 'project') await loadProjects();
+  else if (entityType === 'agenda') await loadAgenda();
+  else if (entityType === 'playlist') await loadPlaylists();
+  else if (entityType === 'presave') await loadPresaves();
+  else if (entityType === 'finance') window.dispatchEvent(new CustomEvent('apollus-finance-refresh'));
+}
+
 async function restoreTrashItem(entityType, id) {
   const item = findTrashItem(entityType, id);
   const entityInfo = trashEntityInfo(entityType);
   if (!item || !entityInfo) return;
 
-  const payload = {
-    deleted_at: null,
-    deleted_by: null,
-    deleted_by_name: null,
-    deleted_by_email: null,
-    published: Boolean(item.deleted_previous_published),
-    deleted_previous_published: null,
-    updated_at: new Date().toISOString(),
-  };
-  const { data, error } = await supabase.from(entityInfo.table).update(payload).eq('id', id).select().single();
-  if (error) return setGlobalMessage('Não foi possível restaurar o item.', 'error');
+  const { data: restored, error } = await supabase.rpc('apollus_restore', {
+    target_entity: entityType,
+    target_id: id,
+  });
+  if (error || restored !== true) {
+    return setGlobalMessage(error?.message || 'Não foi possível restaurar o item.', 'error');
+  }
 
-  state.trashItems = state.trashItems.filter((trashItem) => !(trashItem.entity_type === entityType && trashItem.id === id));
-  if (entityType === 'project') state.projects.unshift(data);
-  if (entityType === 'agenda') state.agenda.unshift(data);
-  if (entityType === 'playlist') state.playlists.unshift(data);
-  if (entityType === 'presave') state.presaves.unshift(data);
-
-  renderProjectsAdmin();
-  renderAgendaAdmin();
-  renderPlaylistsAdmin();
-  renderPresavesAdmin();
-  renderTrash();
+  await refreshEntityAfterTrashOperation(entityType);
+  await loadTrash();
   await loadActivities();
   renderOverview();
   setGlobalMessage(`${entityInfo.label} restaurado${entityType === 'playlist' ? 'a' : ''} com sucesso.`, 'success');
@@ -1233,14 +1232,20 @@ function confirmPermanentDelete(entityType, id) {
   if (!item || !entityInfo) return;
   confirmAction(
     'Excluir definitivamente?',
-    `“${item.title || 'Sem título'}” e suas mídias vinculadas serão apagados sem possibilidade de restauração.`,
+    `“${item.title || 'Sem título'}”${entityType === 'finance' ? '' : ' e suas mídias vinculadas'} será apagado sem possibilidade de restauração.`,
     async () => {
       const paths = trashMediaPaths(item);
-      const { error } = await supabase.from(entityInfo.table).delete().eq('id', id);
-      if (error) return setGlobalMessage('Não foi possível excluir o item definitivamente.', 'error');
+      const { data: purged, error } = await supabase.rpc('apollus_purge', {
+        target_entity: entityType,
+        target_id: id,
+      });
+      if (error || purged !== true) {
+        return setGlobalMessage(error?.message || 'Não foi possível excluir o item definitivamente.', 'error');
+      }
+
       await removeFiles(paths);
-      state.trashItems = state.trashItems.filter((trashItem) => !(trashItem.entity_type === entityType && trashItem.id === id));
-      renderTrash();
+      await refreshEntityAfterTrashOperation(entityType);
+      await loadTrash();
       await loadActivities();
       renderOverview();
       setGlobalMessage('Item excluído definitivamente.', 'success');
@@ -2021,18 +2026,15 @@ function confirmDeleteProject(id) {
   const project = state.projects.find((item) => item.id === id);
   if (!project) return;
   confirmAction('Mover projeto para a lixeira?', `“${project.title}” ficará oculto e seus arquivos serão preservados para restauração.`, async () => {
-    const actor = currentActorDetails();
-    const payload = {
-      deleted_at: new Date().toISOString(), deleted_by: actor.id,
-      deleted_by_name: actor.name, deleted_by_email: actor.email,
-      deleted_previous_published: project.published, published: false,
-      updated_at: new Date().toISOString(),
-    };
-    const { data, error } = await supabase.from('projects').update(payload).eq('id', id).select().single();
-    if (error) return setGlobalMessage('Não foi possível mover o projeto para a lixeira.', 'error');
-    state.projects = state.projects.filter((item) => item.id !== id);
-    state.trashItems.unshift({ ...data, entity_type: 'project' });
-    renderProjectsAdmin(); renderTrash(); await loadActivities(); renderOverview();
+    const { data: moved, error } = await supabase.rpc('apollus_soft_delete', {
+      target_entity: 'project',
+      target_id: id,
+    });
+    if (error || moved !== true) return setGlobalMessage(error?.message || 'Não foi possível mover o projeto para a lixeira.', 'error');
+    await loadProjects();
+    await loadTrash();
+    await loadActivities();
+    renderOverview();
     setGlobalMessage('Projeto movido para a lixeira.', 'success');
   });
 }
@@ -2284,18 +2286,15 @@ function confirmDeleteAgenda(id) {
   const item = state.agenda.find((agendaItem) => agendaItem.id === id);
   if (!item) return;
   confirmAction('Mover data para a lixeira?', `“${item.title}” ficará oculta e poderá ser restaurada depois.`, async () => {
-    const actor = currentActorDetails();
-    const payload = {
-      deleted_at: new Date().toISOString(), deleted_by: actor.id,
-      deleted_by_name: actor.name, deleted_by_email: actor.email,
-      deleted_previous_published: item.published, published: false,
-      updated_at: new Date().toISOString(),
-    };
-    const { data, error } = await supabase.from('agenda_events').update(payload).eq('id', id).select().single();
-    if (error) return setGlobalMessage('Não foi possível mover a data para a lixeira.', 'error');
-    state.agenda = state.agenda.filter((agendaItem) => agendaItem.id !== id);
-    state.trashItems.unshift({ ...data, entity_type: 'agenda' });
-    renderAgendaAdmin(); renderTrash(); await loadActivities(); renderOverview();
+    const { data: moved, error } = await supabase.rpc('apollus_soft_delete', {
+      target_entity: 'agenda',
+      target_id: id,
+    });
+    if (error || moved !== true) return setGlobalMessage(error?.message || 'Não foi possível mover a data para a lixeira.', 'error');
+    await loadAgenda();
+    await loadTrash();
+    await loadActivities();
+    renderOverview();
     setGlobalMessage('Data movida para a lixeira.', 'success');
   });
 }
