@@ -178,11 +178,31 @@ function applyAccessVisibility() {
 
   const userBox = el('admin-user');
   if (userBox) {
-    userBox.innerHTML = `<strong>${escapeHtml(financeState.profile.display_name || financeState.session.user.email || 'Administrador')}</strong><small>${escapeHtml(roleLabel(financeState.profile.role))}</small>`;
+    const userHtml = `<strong>${escapeHtml(financeState.profile.display_name || financeState.session.user.email || 'Administrador')}</strong><small>${escapeHtml(roleLabel(financeState.profile.role))}</small>`;
+    // Não reescreve o conteúdo se nada mudou. Isso evita que o MutationObserver
+    // dispare novamente por uma alteração criada pelo próprio controle de acesso.
+    if (userBox.innerHTML !== userHtml) userBox.innerHTML = userHtml;
   }
 
   if (!financeState.observer && el('admin-app')) {
-    financeState.observer = new MutationObserver(() => applyAccessVisibility());
+    let accessRefreshScheduled = false;
+    financeState.observer = new MutationObserver((mutations) => {
+      // Alterações dentro da identificação do usuário são produzidas pelo próprio
+      // applyAccessVisibility e não precisam iniciar uma nova varredura do painel.
+      const hasRelevantMutation = mutations.some((mutation) => {
+        const target = mutation.target?.nodeType === 1 ? mutation.target : mutation.target?.parentElement;
+        return !target?.closest?.('#admin-user');
+      });
+      if (!hasRelevantMutation || accessRefreshScheduled) return;
+
+      // Agrupa várias renderizações do admin.js em apenas uma checagem de acesso
+      // por frame, evitando dezenas/centenas de varreduras consecutivas do DOM.
+      accessRefreshScheduled = true;
+      window.requestAnimationFrame(() => {
+        accessRefreshScheduled = false;
+        applyAccessVisibility();
+      });
+    });
     financeState.observer.observe(el('admin-app'), { childList: true, subtree: true });
   }
 }
