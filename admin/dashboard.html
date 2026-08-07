@@ -10,9 +10,9 @@
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&amp;family=Inter:wght@400;500;600;700;800&amp;family=Permanent+Marker&amp;display=swap" rel="stylesheet"/>
-<link href="admin.css?v=20260807-stable1-p1" rel="stylesheet"/>
+<link href="admin.css?v=20260807-stable1-nfse-v2" rel="stylesheet"/>
 </head>
-<body class="admin-dashboard-body" data-admin-page="dashboard" data-apollus-version="20260807-stable1-p1">
+<body class="admin-dashboard-body" data-admin-page="dashboard" data-apollus-version="20260807-stable1-nfse-v2">
 <div class="admin-boot" id="admin-loading">
 <span class="admin-spinner"></span>
 <p>Carregando painel...</p>
@@ -241,7 +241,7 @@
 <button data-finance-view="transactions" type="button">Receitas e despesas</button>
 <button data-finance-view="receivable" type="button">Contas a receber</button>
 <button data-finance-view="payable" type="button">Contas a pagar</button>
-<button data-finance-view="invoices" data-requires-permission="finance.invoice" type="button">Notas fiscais (MEI)</button>
+<button data-finance-view="invoices" data-requires-permission="finance.invoice" type="button">Notas fiscais / NFS-e</button>
 <button data-finance-view="reports" type="button">Relatório mensal</button>
 </nav>
 <section class="finance-view active" data-finance-section="overview" id="finance-overview-view">
@@ -268,7 +268,7 @@
 <button class="admin-btn secondary" data-requires-permission="finance.export" id="finance-export-current" type="button">Exportar CSV</button>
 </div>
 <div class="finance-list-summary" id="finance-list-summary"></div>
-<div class="finance-table-wrap"><table class="finance-table"><thead><tr><th>Descrição</th><th>Tipo</th><th>Categoria</th><th>Vencimento</th><th>Total</th><th>Pago/recebido</th><th>Saldo</th><th>Status</th><th>NF</th><th>Projeto</th><th></th></tr></thead><tbody id="finance-entry-list"></tbody></table></div>
+<div class="finance-table-wrap"><table class="finance-table"><thead><tr><th>Descrição</th><th>Tipo</th><th>Categoria</th><th>Vencimento</th><th>Total</th><th>Pago/recebido</th><th>Saldo</th><th>Status</th><th>NFS-e</th><th>Projeto</th><th></th></tr></thead><tbody id="finance-entry-list"></tbody></table></div>
 <div class="admin-list-state" hidden="" id="finance-entry-empty">Nenhum lançamento encontrado.</div>
 </section>
 <section class="finance-view" data-finance-section="reports" id="finance-reports-view">
@@ -688,7 +688,81 @@
 <label><span>Intervalo entre parcelas</span><select id="finance-entry-interval"><option value="0">Mesmo vencimento</option><option selected="" value="1">Mensal</option><option value="2">A cada 2 meses</option><option value="3">Trimestral</option></select></label>
 </div>
 <label><span>Observações</span><textarea id="finance-entry-notes" rows="3"></textarea></label>
-<section class="invoice-form-section" data-requires-permission="finance.invoice"><label class="settings-toggle"><input id="finance-invoice-required" type="checkbox"/><span><strong>Controlar emissão de Nota Fiscal / MEI</strong><small>Guarda somente os dados e links; não ocupa espaço com PDF ou XML.</small></span></label><div hidden="" id="finance-invoice-fields"><div class="form-grid two-columns"><label><span>Status da nota</span><select id="finance-invoice-status"><option value="pendente">Pendente de emissão</option><option value="emitida">Emitida</option><option value="cancelada">Cancelada</option><option value="substituida">Substituída</option><option value="nao_necessaria">Não necessária</option></select></label><label><span>Número da NFS-e</span><input id="finance-invoice-number" maxlength="80" type="text"/></label><label><span>Data de emissão</span><input id="finance-invoice-issue-date" type="date"/></label><label><span>Competência da nota</span><input id="finance-invoice-competence" type="date"/></label><label><span>Tomador</span><input id="finance-invoice-customer" maxlength="160" type="text"/></label><label><span>CPF / CNPJ do tomador</span><input id="finance-invoice-customer-document" maxlength="30" type="text"/></label><label class="form-wide"><span>Serviço prestado</span><textarea id="finance-invoice-service" rows="3"></textarea></label><label><span>Código de Tributação Nacional</span><input id="finance-invoice-tax-code" maxlength="120" type="text"/></label><label><span>Item da NBS</span><input id="finance-invoice-nbs" maxlength="120" type="text"/></label><label><span>Município emissor</span><input id="finance-invoice-city" maxlength="100" type="text" value="Curitiba-PR"/></label><label><span>Valor da nota</span><input id="finance-invoice-amount" min="0" step="0.01" type="number"/></label><label class="form-wide"><span>Link do PDF / XML</span><input id="finance-invoice-url" placeholder="https://..." type="url"/></label></div></div></section>
+<section class="invoice-form-section" data-requires-permission="finance.invoice">
+<label class="settings-toggle invoice-master-toggle">
+<input id="finance-invoice-required" type="checkbox"/>
+<span><strong>Controlar Nota Fiscal / NFS-e</strong><small>Registra os dados fiscais e somente o link da nota no Drive. Nenhum PDF ou XML é enviado ao Supabase.</small></span>
+</label>
+<div class="invoice-v2" hidden="" id="finance-invoice-fields">
+  <div class="invoice-v2-heading">
+    <div><p class="admin-kicker">NFS-e V2</p><h3>Dados da nota fiscal</h3><p>Prestador, tomador e intermediário são participantes independentes. A Apollus pode ocupar qualquer um desses papéis.</p></div>
+  </div>
+
+  <div class="form-grid two-columns invoice-core-grid">
+    <label><span>Tipo do controle *</span><select id="finance-invoice-direction"><option value="emitida">Emitida pela Apollus</option><option value="recebida">Recebida de terceiro</option><option value="intermediada">Intermediada pela Apollus</option></select></label>
+    <label><span>Papel da Apollus *</span><select id="finance-invoice-role"><option value="prestador">Prestador / emitente</option><option value="tomador">Tomador</option><option value="intermediario">Intermediário</option><option value="nenhum">Nenhum / somente controle</option></select></label>
+    <label><span>Status da nota</span><select id="finance-invoice-status"><option value="pendente">Pendente</option><option value="emitida">Emitida</option><option value="cancelada">Cancelada</option><option value="substituida">Substituída</option></select></label>
+    <label><span>Número da NFS-e</span><input id="finance-invoice-number" maxlength="80" type="text"/></label>
+    <label><span>Data de emissão</span><input id="finance-invoice-issue-date" type="date"/></label>
+    <label><span>Competência da nota</span><input id="finance-invoice-competence" type="date"/></label>
+    <label><span>Série da DPS</span><input id="finance-invoice-dps-series" maxlength="40" type="text"/></label>
+    <label><span>Número da DPS</span><input id="finance-invoice-dps-number" maxlength="80" type="text"/></label>
+  </div>
+  <p class="invoice-role-note" id="finance-invoice-role-note"></p>
+
+  <section class="invoice-block">
+    <header class="invoice-block-header"><div><p class="admin-kicker">Pessoas</p><h4>Participantes da NFS-e</h4></div><button class="mini-action" id="finance-party-new" type="button">+ Nova pessoa / empresa</button></header>
+    <div class="invoice-parties-grid">
+      <div class="invoice-party-field"><label><span>Prestador / emitente</span><select id="finance-invoice-provider"><option value="">Não informado</option></select></label><button class="invoice-party-edit" data-party-edit-from="finance-invoice-provider" type="button">Editar cadastro</button></div>
+      <div class="invoice-party-field"><label><span>Tomador</span><select id="finance-invoice-customer"><option value="">Não informado</option></select></label><button class="invoice-party-edit" data-party-edit-from="finance-invoice-customer" type="button">Editar cadastro</button></div>
+      <div class="invoice-party-field"><label><span>Intermediário</span><select id="finance-invoice-intermediary"><option value="">Não informado</option></select></label><button class="invoice-party-edit" data-party-edit-from="finance-invoice-intermediary" type="button">Editar cadastro</button></div>
+    </div>
+    <small class="invoice-help">Os três podem existir na mesma nota. Para notas sem intermediário, deixe esse campo como “Não informado”.</small>
+
+    <div class="invoice-party-editor" hidden="" id="finance-party-editor">
+      <input id="finance-party-id" type="hidden"/>
+      <header><div><p class="admin-kicker">Cadastro fiscal</p><h4 id="finance-party-editor-title">Nova pessoa / empresa</h4></div><button aria-label="Fechar cadastro fiscal" id="finance-party-editor-close" type="button">×</button></header>
+      <div class="form-grid two-columns">
+        <label><span>Tipo</span><select id="finance-party-type"><option value="empresa">Empresa</option><option value="pessoa">Pessoa física</option><option value="exterior">Exterior</option></select></label>
+        <label><span>Razão social / nome *</span><input id="finance-party-legal-name" maxlength="180" type="text"/></label>
+        <label><span>Nome fantasia</span><input id="finance-party-trade-name" maxlength="180" type="text"/></label>
+        <label><span>CPF / CNPJ / documento</span><input id="finance-party-tax-id" maxlength="40" type="text"/></label>
+        <label><span>Inscrição municipal</span><input id="finance-party-municipal-registration" maxlength="80" type="text"/></label>
+        <label><span>País</span><input id="finance-party-country" maxlength="2" placeholder="BR" type="text"/></label>
+        <label><span>Município</span><input id="finance-party-city" maxlength="120" type="text"/></label>
+        <label><span>UF / Estado</span><input id="finance-party-state" maxlength="80" type="text"/></label>
+        <label><span>Simples Nacional</span><select id="finance-party-simple-national"><option value="">Não informado</option><option value="true">Sim</option><option value="false">Não</option></select></label>
+        <label><span>Regime tributário</span><input id="finance-party-tax-regime" maxlength="120" placeholder="Ex.: MEI, Simples Nacional..." type="text"/></label>
+      </div>
+      <div class="invoice-party-editor-actions"><button class="admin-btn secondary" id="finance-party-editor-cancel" type="button">Cancelar</button><button class="admin-btn primary" id="finance-party-save" type="button">Salvar cadastro</button></div>
+      <p aria-live="polite" class="form-message" id="finance-party-message"></p>
+    </div>
+  </section>
+
+  <section class="invoice-block">
+    <header class="invoice-block-header"><div><p class="admin-kicker">Serviço</p><h4>Serviço e tributação</h4></div></header>
+    <div class="form-grid two-columns">
+      <label class="form-wide"><span>Descrição do serviço</span><textarea id="finance-invoice-service" rows="3"></textarea></label>
+      <label><span>Código de Tributação Nacional</span><input id="finance-invoice-tax-code" maxlength="120" type="text"/></label>
+      <label><span>Item da NBS</span><input id="finance-invoice-nbs" maxlength="120" type="text"/></label>
+      <label><span>Município de incidência</span><input id="finance-invoice-city" maxlength="120" type="text" value="Curitiba"/></label>
+      <label><span>UF de incidência</span><input id="finance-invoice-state" maxlength="80" type="text" value="PR"/></label>
+    </div>
+  </section>
+
+  <section class="invoice-block">
+    <header class="invoice-block-header"><div><p class="admin-kicker">Valores</p><h4>Valores da NFS-e</h4></div></header>
+    <div class="form-grid two-columns">
+      <label><span>Valor do serviço</span><input id="finance-invoice-amount" min="0" step="0.01" type="number"/></label>
+      <label><span>Deduções</span><input id="finance-invoice-deductions" min="0" step="0.01" type="number" value="0"/></label>
+      <label><span>ISS</span><input id="finance-invoice-iss" min="0" step="0.01" type="number" value="0"/></label>
+      <label><span>Valor líquido</span><input id="finance-invoice-net" min="0" step="0.01" type="number"/></label>
+      <label class="form-wide invoice-drive-field"><span>Link da nota no Drive</span><div><input id="finance-invoice-url" placeholder="https://drive.google.com/..." type="url"/><a hidden="" id="finance-invoice-open-drive" rel="noopener" target="_blank">Abrir no Drive ↗</a></div><small>Use o link da pasta ou do arquivo no Google Drive. O documento não será armazenado no Supabase.</small></label>
+      <label class="form-wide"><span>Observações da NFS-e</span><textarea id="finance-invoice-notes" rows="3"></textarea></label>
+    </div>
+  </section>
+</div>
+</section>
 <section class="finance-installments-section" hidden="" id="finance-installments-section"><header><div><p class="admin-kicker">Parcelas e pagamentos</p><h3>Controle de recebimentos e pagamentos</h3></div></header><div id="finance-installments-list"></div></section>
 <footer class="dialog-actions"><button class="admin-btn secondary" data-admin-close="" type="button">Cancelar</button><button class="admin-btn danger" data-requires-permission="finance.delete" hidden="" id="finance-entry-delete" type="button">Mover para lixeira</button><button class="admin-btn primary" id="finance-entry-save" type="submit">Salvar lançamento</button></footer>
 <p aria-live="polite" class="form-message" id="finance-entry-message"></p>
@@ -717,6 +791,6 @@
 <footer class="dialog-actions"><button class="admin-btn secondary" data-admin-close="" type="button">Cancelar</button><button class="admin-btn danger" id="confirm-action" type="button">Excluir</button></footer>
 </div>
 </dialog>
-<script src="admin.js?v=20260807-stable1-p1" type="module"></script><script src="finance.js?v=20260807-stable1-p1" type="module"></script>
+<script src="admin.js?v=20260807-stable1-nfse-v2" type="module"></script><script src="finance.js?v=20260807-stable1-nfse-v2" type="module"></script>
 </body>
 </html>

@@ -37,6 +37,10 @@ const financeState = {
   profilePermissions: [],
   entries: [],
   projects: [],
+  parties: [],
+  invoices: [],
+  editingPartyId: null,
+  partyReturnSelectId: '',
   activeView: 'overview',
   editingEntryId: null,
   activePaymentInstallmentId: null,
@@ -60,7 +64,10 @@ function formatDate(value) {
 }
 function todayIso() { return new Date().toISOString().slice(0, 10); }
 function monthIso(date = new Date()) { return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`; }
-function hasPermission(permission) { return financeState.profile?.role === 'owner' || financeState.permissions.has(permission); }
+function hasPermission(permission) {
+  if (!ALL_PERMISSIONS.includes(permission)) return false;
+  return isOwner() || financeState.permissions.has(permission);
+}
 function isOwner() { return financeState.session?.user?.id === OWNER_ID && financeState.profile?.role === 'owner'; }
 function setFormMessage(target, message = '', type = '') {
   if (!target) return;
@@ -446,12 +453,37 @@ function statusLabel(status) {
   return { pendente: 'Pendente', parcial: 'Parcial', recebido: 'Recebido', pago: 'Pago', atrasado: 'Atrasado', cancelado: 'Cancelado' }[status] || status;
 }
 function invoiceLabel(status) {
-  return { nao_necessaria: 'Não necessária', pendente: 'Pendente', emitida: 'Emitida', cancelada: 'Cancelada', substituida: 'Substituída' }[status] || status || '—';
+  return { pendente: 'Pendente', emitida: 'Emitida', cancelada: 'Cancelada', substituida: 'Substituída' }[status] || status || '—';
+}
+function invoiceDirectionLabel(direction) {
+  return { emitida: 'Emitida pela Apollus', recebida: 'Recebida de terceiro', intermediada: 'Intermediada pela Apollus' }[direction] || direction || '—';
+}
+function apollusRoleLabel(role) {
+  return { prestador: 'Prestador / emitente', tomador: 'Tomador', intermediario: 'Intermediário', nenhum: 'Nenhum / somente controle' }[role] || role || '—';
+}
+function getParty(id) { return financeState.parties.find((party) => party.id === id) || null; }
+function getApollusParty() { return financeState.parties.find((party) => party.is_apollus) || null; }
+function partyDisplayName(party) {
+  if (!party) return '';
+  const name = party.trade_name || party.legal_name || 'Sem nome';
+  const document = party.tax_id ? ` • ${party.tax_id}` : '';
+  return `${name}${document}`;
+}
+function partyName(id) { return partyDisplayName(getParty(id)); }
+function invoiceForEntry(entry) { return entry?.invoice || null; }
+
+function attachInvoicesToEntries(entries, invoices) {
+  const byEntry = new Map();
+  invoices.forEach((invoice) => {
+    if (!invoice.financial_entry_id || byEntry.has(invoice.financial_entry_id)) return;
+    byEntry.set(invoice.financial_entry_id, invoice);
+  });
+  return entries.map((entry) => ({ ...entry, invoice: byEntry.get(entry.id) || null }));
 }
 
 async function loadFinanceData() {
   if (!hasPermission('finance.view') || !financeIsUnlocked()) return;
-  const [entryResult, projectResult] = await Promise.all([
+  const [entryResult, projectResult, partyResult, invoiceResult] = await Promise.all([
     supabase.from('financial_entries').select(`
       *, project:projects(id,title),
       installments:financial_installments(
@@ -460,18 +492,24 @@ async function loadFinanceData() {
       )
     `).is('deleted_at', null).order('competence_date', { ascending: false }).order('created_at', { ascending: false }),
     supabase.from('projects').select('id,title').is('deleted_at', null).order('title'),
+    supabase.from('financial_parties').select('*').eq('active', true).order('is_apollus', { ascending: false }).order('legal_name'),
+    supabase.from('financial_invoices').select('*').order('created_at', { ascending: false }),
   ]);
-  if (entryResult.error) {
-    console.error(entryResult.error);
-    notify('Não foi possível carregar o Financeiro. Confira o SQL e a verificação em duas etapas.', 'error');
+  if (entryResult.error || partyResult.error || invoiceResult.error) {
+    console.error(entryResult.error || partyResult.error || invoiceResult.error);
+    notify('Não foi possível carregar o Financeiro/NFS-e. Confira a migração NFS-e V2 e a verificação em duas etapas.', 'error');
     return;
   }
-  financeState.entries = (entryResult.data || []).map((entry) => ({
+  const entries = (entryResult.data || []).map((entry) => ({
     ...entry,
     installments: [...(entry.installments || [])].sort((a, b) => a.installment_number - b.installment_number),
   }));
+  financeState.parties = partyResult.data || [];
+  financeState.invoices = invoiceResult.data || [];
+  financeState.entries = attachInvoicesToEntries(entries, financeState.invoices);
   financeState.projects = projectResult.data || [];
   populateProjectSelect();
+  populatePartySelects();
   renderFinance();
 }
 
@@ -554,15 +592,15 @@ function renderFinanceAlerts() {
   const active = financeState.entries.filter((entry) => entry.status !== 'cancelado' && entryBalance(entry) > 0);
   const overdueReceivables = active.filter((entry) => entry.entry_type === 'receita' && entry.due_date < todayIso());
   const duePayables = active.filter((entry) => entry.entry_type === 'despesa' && entry.due_date <= todayIso());
-  const pendingInvoices = financeState.entries.filter((entry) => entry.invoice_required && entry.invoice_status === 'pendente');
+  const pendingInvoices = financeState.entries.filter((entry) => invoiceForEntry(entry)?.status === 'pendente');
   const partial = active.filter((entry) => computedStatus(entry) === 'parcial');
   const alerts = [
     ['warning', `${overdueReceivables.length} conta(s) a receber vencida(s)`, formatMoney(overdueReceivables.reduce((sum, entry) => sum + entryBalance(entry), 0))],
     ['danger', `${duePayables.length} conta(s) a pagar vencendo/vencida(s)`, formatMoney(duePayables.reduce((sum, entry) => sum + entryBalance(entry), 0))],
-    ['invoice', `${pendingInvoices.length} nota(s) fiscal(is) pendente(s)`, formatMoney(pendingInvoices.reduce((sum, entry) => sum + Number(entry.invoice_amount || entry.amount_total || 0), 0))],
+    ['invoice', `${pendingInvoices.length} NFS-e pendente(s)`, formatMoney(pendingInvoices.reduce((sum, entry) => sum + Number(invoiceForEntry(entry)?.service_amount || entry.amount_total || 0), 0))],
     ['success', `${partial.length} pagamento(s) parcial(is)`, formatMoney(partial.reduce((sum, entry) => sum + entryBalance(entry), 0))],
   ].filter(([, title]) => !title.startsWith('0 '));
-  box.innerHTML = alerts.length ? alerts.map(([type, title, value]) => `<button type="button" class="finance-alert-item ${type}" data-finance-view-link="transactions"><span>!</span><div><strong>${escapeHtml(title)}</strong><small>${escapeHtml(value)}</small></div><b>Ver →</b></button>`).join('') : '<div class="empty-mini">Nenhum alerta financeiro no momento.</div>';
+  box.innerHTML = alerts.length ? alerts.map(([type, title, value]) => `<button type="button" class="finance-alert-item ${type}" data-finance-view-link="${type === 'invoice' ? 'invoices' : 'transactions'}"><span>!</span><div><strong>${escapeHtml(title)}</strong><small>${escapeHtml(value)}</small></div><b>Ver →</b></button>`).join('') : '<div class="empty-mini">Nenhum alerta financeiro no momento.</div>';
 }
 
 function renderFinanceCategories(entries) {
@@ -587,13 +625,14 @@ function renderFinanceRecent() {
 function financeRow(entry, compact = false) {
   const status = computedStatus(entry);
   const projectTitle = entry.project?.title || '—';
+  const invoice = invoiceForEntry(entry);
   if (compact) return `<button class="finance-recent-row" type="button" data-finance-edit="${escapeHtml(entry.id)}"><span class="entry-type-dot ${entry.entry_type}"></span><div><strong>${escapeHtml(entry.description)}</strong><small>${escapeHtml(entry.category)} • ${escapeHtml(projectTitle)}</small></div><time>${escapeHtml(formatDate(entry.due_date))}</time><b>${escapeHtml(formatMoney(entry.amount_total))}</b><em class="finance-status ${status}">${escapeHtml(statusLabel(status))}</em></button>`;
   return `<tr>
     <td><button class="finance-entry-link" type="button" data-finance-edit="${escapeHtml(entry.id)}"><strong>${escapeHtml(entry.description)}</strong><small>${escapeHtml(entry.partner_name || '')}</small></button></td>
     <td><span class="entry-type-badge ${entry.entry_type}">${entry.entry_type === 'receita' ? 'Receita' : 'Despesa'}</span></td><td>${escapeHtml(entry.category)}</td><td>${escapeHtml(formatDate(entry.due_date))}</td>
     <td>${escapeHtml(formatMoney(entry.amount_total))}</td><td>${escapeHtml(formatMoney(entry.amount_paid))}</td><td><strong>${escapeHtml(formatMoney(entryBalance(entry)))}</strong></td>
     <td><span class="finance-status ${status}">${escapeHtml(statusLabel(status))}</span></td>
-    <td><span class="invoice-status ${entry.invoice_status || 'nao_necessaria'}">${escapeHtml(invoiceLabel(entry.invoice_status))}</span></td><td>${escapeHtml(projectTitle)}</td>
+    <td>${invoice ? `<span class="invoice-status ${escapeHtml(invoice.status)}" title="${escapeHtml(invoiceDirectionLabel(invoice.invoice_direction))}">${escapeHtml(invoiceLabel(invoice.status))}</span>` : '<span class="invoice-status nao_necessaria">—</span>'}</td><td>${escapeHtml(projectTitle)}</td>
     <td><button class="icon-button" type="button" data-finance-edit="${escapeHtml(entry.id)}" title="Abrir">↗</button></td>
   </tr>`;
 }
@@ -607,7 +646,7 @@ function currentListEntries() {
     const haystack = `${entry.description} ${entry.category} ${entry.partner_name || ''} ${entry.project?.title || ''}`.toLowerCase();
     const viewMatches = financeState.activeView === 'receivable' ? entry.entry_type === 'receita' && entryBalance(entry) > 0
       : financeState.activeView === 'payable' ? entry.entry_type === 'despesa' && entryBalance(entry) > 0
-      : financeState.activeView === 'invoices' ? entry.invoice_required
+      : financeState.activeView === 'invoices' ? Boolean(invoiceForEntry(entry))
       : true;
     return String(entry.competence_date || '').startsWith(month)
       && viewMatches
@@ -637,8 +676,9 @@ function renderFinanceReport() {
   const monthDate = new Date(`${month}-01T12:00:00`);
   const monthLabel = new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(monthDate);
   el('finance-report-title').textContent = `Relatório de ${monthLabel}`;
-  const invoiceIssued = entries.filter((entry) => entry.invoice_required && entry.invoice_status === 'emitida');
-  const invoicePending = entries.filter((entry) => entry.invoice_required && entry.invoice_status === 'pendente');
+  const invoiceIssued = entries.filter((entry) => invoiceForEntry(entry)?.status === 'emitida');
+  const invoicePending = entries.filter((entry) => invoiceForEntry(entry)?.status === 'pendente');
+  const invoiceReceived = entries.filter((entry) => invoiceForEntry(entry)?.invoice_direction === 'recebida');
   const byProject = new Map();
   entries.forEach((entry) => {
     const name = entry.project?.title || 'Sem projeto';
@@ -648,7 +688,7 @@ function renderFinanceReport() {
     byProject.set(name, row);
   });
   content.innerHTML = `<div class="report-kpis"><article><span>Faturamento previsto</span><strong>${escapeHtml(formatMoney(total.revenue))}</strong></article><article><span>Recebido</span><strong>${escapeHtml(formatMoney(total.received))}</strong></article><article><span>Despesas previstas</span><strong>${escapeHtml(formatMoney(total.expense))}</strong></article><article><span>Despesas pagas</span><strong>${escapeHtml(formatMoney(total.paid))}</strong></article><article><span>Lucro previsto</span><strong>${escapeHtml(formatMoney(total.revenue - total.expense))}</strong></article><article><span>Lucro realizado</span><strong>${escapeHtml(formatMoney(total.received - total.paid))}</strong></article></div>
-    <div class="report-grid"><article class="finance-card"><h3>Notas fiscais / MEI</h3><p><span>Emitidas</span><strong>${invoiceIssued.length}</strong></p><p><span>Pendentes</span><strong>${invoicePending.length}</strong></p><p><span>Valor aguardando emissão</span><strong>${escapeHtml(formatMoney(invoicePending.reduce((sum, entry) => sum + Number(entry.invoice_amount || entry.amount_total), 0)))}</strong></p></article><article class="finance-card report-projects"><h3>Resultado por projeto</h3>${[...byProject.entries()].sort((a,b)=>(b[1].revenue-b[1].expense)-(a[1].revenue-a[1].expense)).map(([name,row])=>`<p><span>${escapeHtml(name)}</span><strong>${escapeHtml(formatMoney(row.revenue-row.expense))}</strong><small>Realizado: ${escapeHtml(formatMoney(row.received-row.paid))}</small></p>`).join('') || '<div class="empty-mini">Sem movimentações.</div>'}</article></div>`;
+    <div class="report-grid"><article class="finance-card"><h3>Notas fiscais / NFS-e</h3><p><span>Emitidas</span><strong>${invoiceIssued.length}</strong></p><p><span>Recebidas de terceiros</span><strong>${invoiceReceived.length}</strong></p><p><span>Pendentes</span><strong>${invoicePending.length}</strong></p><p><span>Valor pendente</span><strong>${escapeHtml(formatMoney(invoicePending.reduce((sum, entry) => sum + Number(invoiceForEntry(entry)?.service_amount || entry.amount_total), 0)))}</strong></p></article><article class="finance-card report-projects"><h3>Resultado por projeto</h3>${[...byProject.entries()].sort((a,b)=>(b[1].revenue-b[1].expense)-(a[1].revenue-a[1].expense)).map(([name,row])=>`<p><span>${escapeHtml(name)}</span><strong>${escapeHtml(formatMoney(row.revenue-row.expense))}</strong><small>Realizado: ${escapeHtml(formatMoney(row.received-row.paid))}</small></p>`).join('') || '<div class="empty-mini">Sem movimentações.</div>'}</article></div>`;
 }
 
 function setFinanceView(view) {
@@ -688,10 +728,208 @@ function populateProjectSelect() {
   if ([...select.options].some((option) => option.value === selected)) select.value = selected;
 }
 
+function populatePartySelects(overrides = {}) {
+  ['finance-invoice-provider', 'finance-invoice-customer', 'finance-invoice-intermediary'].forEach((selectId) => {
+    const select = el(selectId);
+    if (!select) return;
+    const selected = overrides[selectId] ?? select.value;
+    select.innerHTML = '<option value="">Não informado</option>' + financeState.parties.map((party) => `<option value="${escapeHtml(party.id)}">${escapeHtml(partyDisplayName(party))}${party.is_apollus ? ' • APOLLUS' : ''}</option>`).join('');
+    if ([...select.options].some((option) => option.value === selected)) select.value = selected;
+  });
+}
+
+function invoiceRoleTargetSelect(role) {
+  return { prestador: 'finance-invoice-provider', tomador: 'finance-invoice-customer', intermediario: 'finance-invoice-intermediary' }[role] || '';
+}
+
+function applyApollusRolePreset() {
+  const role = el('finance-invoice-role')?.value || 'nenhum';
+  const apollus = getApollusParty();
+  const note = el('finance-invoice-role-note');
+  if (!note) return;
+  if (apollus) {
+    ['finance-invoice-provider', 'finance-invoice-customer', 'finance-invoice-intermediary'].forEach((selectId) => {
+      if (el(selectId)?.value === apollus.id) el(selectId).value = '';
+    });
+  }
+  if (role === 'nenhum') {
+    note.textContent = 'A Apollus não será vinculada automaticamente a nenhum participante desta nota.';
+    return;
+  }
+  const targetId = invoiceRoleTargetSelect(role);
+  if (apollus && targetId && el(targetId)) el(targetId).value = apollus.id;
+  note.textContent = apollus
+    ? `Apollus definida como ${apollusRoleLabel(role)}. Os outros participantes continuam independentes.`
+    : 'Cadastre a entidade fiscal da Apollus para preencher este papel automaticamente.';
+}
+
+function applyInvoiceDirectionPreset() {
+  const direction = el('finance-invoice-direction')?.value || 'emitida';
+  const suggestedRole = { emitida: 'prestador', recebida: 'tomador', intermediada: 'intermediario' }[direction] || 'nenhum';
+  if (el('finance-invoice-role')) el('finance-invoice-role').value = suggestedRole;
+  applyApollusRolePreset();
+}
+
+function setInvoiceDriveLink(url = '') {
+  const link = el('finance-invoice-open-drive');
+  if (!link) return;
+  const safe = /^https?:\/\//i.test(url) ? url : '';
+  link.hidden = !safe;
+  if (safe) link.href = safe;
+  else link.removeAttribute('href');
+}
+
+function closePartyEditor() {
+  financeState.editingPartyId = null;
+  financeState.partyReturnSelectId = '';
+  if (el('finance-party-editor')) el('finance-party-editor').hidden = true;
+  setFormMessage(el('finance-party-message'));
+}
+
+function openPartyEditor(partyId = '', returnSelectId = '') {
+  if (!hasPermission('finance.invoice')) return;
+  const party = getParty(partyId);
+  financeState.editingPartyId = party?.id || null;
+  financeState.partyReturnSelectId = returnSelectId || '';
+  el('finance-party-id').value = party?.id || '';
+  el('finance-party-editor-title').textContent = party ? `Editar ${party.trade_name || party.legal_name}` : 'Nova pessoa / empresa';
+  el('finance-party-type').value = party?.party_type || 'empresa';
+  el('finance-party-legal-name').value = party?.legal_name || '';
+  el('finance-party-trade-name').value = party?.trade_name || '';
+  el('finance-party-tax-id').value = party?.tax_id || '';
+  el('finance-party-municipal-registration').value = party?.municipal_registration || '';
+  el('finance-party-country').value = party?.country_code || 'BR';
+  el('finance-party-city').value = party?.city || '';
+  el('finance-party-state').value = party?.state || '';
+  el('finance-party-simple-national').value = party?.simple_national === true ? 'true' : party?.simple_national === false ? 'false' : '';
+  el('finance-party-tax-regime').value = party?.tax_regime || '';
+  setFormMessage(el('finance-party-message'));
+  el('finance-party-editor').hidden = false;
+  el('finance-party-legal-name').focus();
+}
+
+async function refreshFiscalParties(selectedId = '', returnSelectId = '') {
+  const { data, error } = await supabase.from('financial_parties').select('*').eq('active', true).order('is_apollus', { ascending: false }).order('legal_name');
+  if (error) throw error;
+  financeState.parties = data || [];
+  populatePartySelects(returnSelectId && selectedId ? { [returnSelectId]: selectedId } : {});
+}
+
+async function saveFiscalParty() {
+  if (!hasPermission('finance.invoice')) return;
+  const button = el('finance-party-save');
+  const message = el('finance-party-message');
+  const legalName = el('finance-party-legal-name').value.trim();
+  if (!legalName) return setFormMessage(message, 'Informe a razão social ou o nome.', 'error');
+  setButtonLoading(button, true);
+  try {
+    const simpleRaw = el('finance-party-simple-national').value;
+    const payload = {
+      party_type: el('finance-party-type').value,
+      legal_name: legalName,
+      trade_name: el('finance-party-trade-name').value.trim() || null,
+      tax_id: el('finance-party-tax-id').value.trim() || null,
+      municipal_registration: el('finance-party-municipal-registration').value.trim() || null,
+      country_code: (el('finance-party-country').value.trim() || 'BR').toUpperCase().slice(0, 2),
+      city: el('finance-party-city').value.trim() || null,
+      state: el('finance-party-state').value.trim() || null,
+      simple_national: simpleRaw === '' ? null : simpleRaw === 'true',
+      tax_regime: el('finance-party-tax-regime').value.trim() || null,
+      updated_by: financeState.session.user.id,
+    };
+    let result;
+    if (financeState.editingPartyId) {
+      result = await supabase.from('financial_parties').update(payload).eq('id', financeState.editingPartyId).select().single();
+    } else {
+      payload.created_by = financeState.session.user.id;
+      result = await supabase.from('financial_parties').insert(payload).select().single();
+    }
+    if (result.error) throw result.error;
+    const returnSelectId = financeState.partyReturnSelectId;
+    await refreshFiscalParties(result.data.id, returnSelectId);
+    closePartyEditor();
+    if (returnSelectId && el(returnSelectId)) el(returnSelectId).value = result.data.id;
+    notify('Cadastro fiscal salvo.', 'success');
+  } catch (error) {
+    console.error(error);
+    setFormMessage(message, error.message || 'Não foi possível salvar o cadastro fiscal.', 'error');
+  } finally {
+    setButtonLoading(button, false);
+  }
+}
+
+function buildInvoicePayload(entryId) {
+  const driveUrl = el('finance-invoice-url').value.trim() || null;
+  if (driveUrl && !/^https?:\/\//i.test(driveUrl)) throw new Error('O link da nota no Drive precisa começar com http:// ou https://.');
+  const role = el('finance-invoice-role').value;
+  const apollus = getApollusParty();
+  const targetSelect = invoiceRoleTargetSelect(role);
+  if (role !== 'nenhum' && apollus && targetSelect && el(targetSelect)?.value !== apollus.id) {
+    throw new Error(`A Apollus está marcada como ${apollusRoleLabel(role)}, mas o participante correspondente não é o cadastro da Apollus.`);
+  }
+  return {
+    financial_entry_id: entryId,
+    apollus_role: role,
+    invoice_direction: el('finance-invoice-direction').value,
+    status: el('finance-invoice-status').value,
+    competence_date: el('finance-invoice-competence').value || null,
+    issue_date: el('finance-invoice-issue-date').value || null,
+    invoice_number: el('finance-invoice-number').value.trim() || null,
+    dps_series: el('finance-invoice-dps-series').value.trim() || null,
+    dps_number: el('finance-invoice-dps-number').value.trim() || null,
+    provider_party_id: el('finance-invoice-provider').value || null,
+    customer_party_id: el('finance-invoice-customer').value || null,
+    intermediary_party_id: el('finance-invoice-intermediary').value || null,
+    service_description: el('finance-invoice-service').value.trim() || null,
+    taxation_code: el('finance-invoice-tax-code').value.trim() || null,
+    nbs_item: el('finance-invoice-nbs').value.trim() || null,
+    incidence_city: el('finance-invoice-city').value.trim() || null,
+    incidence_state: el('finance-invoice-state').value.trim() || null,
+    service_amount: el('finance-invoice-amount').value === '' ? null : Number(el('finance-invoice-amount').value),
+    deductions_amount: Number(el('finance-invoice-deductions').value || 0),
+    iss_amount: Number(el('finance-invoice-iss').value || 0),
+    net_amount: el('finance-invoice-net').value === '' ? null : Number(el('finance-invoice-net').value),
+    drive_url: driveUrl,
+    notes: el('finance-invoice-notes').value.trim() || null,
+    updated_by: financeState.session.user.id,
+  };
+}
+
+async function saveLinkedInvoice(entryId, existingInvoiceId = '') {
+  const payload = buildInvoicePayload(entryId);
+  let result;
+  if (existingInvoiceId) result = await supabase.from('financial_invoices').update(payload).eq('id', existingInvoiceId).select().single();
+  else {
+    payload.created_by = financeState.session.user.id;
+    result = await supabase.from('financial_invoices').insert(payload).select().single();
+  }
+  if (result.error) throw result.error;
+  return result.data;
+}
+
+function mirrorInvoiceIntoLegacyEntryPayload(payload, invoiceEnabled, existingEntry) {
+  if (!hasPermission('finance.invoice')) return;
+  const customer = getParty(el('finance-invoice-customer')?.value);
+  payload.invoice_required = invoiceEnabled;
+  payload.invoice_status = invoiceEnabled ? el('finance-invoice-status').value : 'nao_necessaria';
+  payload.invoice_number = invoiceEnabled ? el('finance-invoice-number').value.trim() || null : null;
+  payload.invoice_issue_date = invoiceEnabled ? el('finance-invoice-issue-date').value || null : null;
+  payload.invoice_competence = invoiceEnabled ? el('finance-invoice-competence').value || null : null;
+  payload.invoice_customer = invoiceEnabled ? (customer?.trade_name || customer?.legal_name || null) : null;
+  payload.invoice_customer_document = invoiceEnabled ? customer?.tax_id || null : null;
+  payload.invoice_service = invoiceEnabled ? el('finance-invoice-service').value.trim() || null : null;
+  payload.invoice_taxation_code = invoiceEnabled ? el('finance-invoice-tax-code').value.trim() || null : null;
+  payload.invoice_nbs_item = invoiceEnabled ? el('finance-invoice-nbs').value.trim() || null : null;
+  payload.invoice_city = invoiceEnabled ? [el('finance-invoice-city').value.trim(), el('finance-invoice-state').value.trim()].filter(Boolean).join('-') || 'Curitiba-PR' : existingEntry?.invoice_city || 'Curitiba-PR';
+  payload.invoice_amount = invoiceEnabled && el('finance-invoice-amount').value !== '' ? Number(el('finance-invoice-amount').value) : null;
+  payload.invoice_document_url = invoiceEnabled ? el('finance-invoice-url').value.trim() || null : null;
+}
+
 function resetFinanceEntryForm() {
   const form = el('finance-entry-form');
   form.reset();
   financeState.editingEntryId = null;
+  closePartyEditor();
   el('finance-entry-id').value = '';
   el('finance-entry-type').value = 'receita';
   populateEntryCategories();
@@ -699,7 +937,17 @@ function resetFinanceEntryForm() {
   el('finance-entry-due').value = todayIso();
   el('finance-entry-installments').value = '1';
   el('finance-entry-interval').value = '1';
-  el('finance-invoice-city').value = 'Curitiba-PR';
+  el('finance-invoice-direction').value = 'emitida';
+  el('finance-invoice-role').value = 'prestador';
+  el('finance-invoice-status').value = 'pendente';
+  el('finance-invoice-competence').value = todayIso();
+  el('finance-invoice-city').value = 'Curitiba';
+  el('finance-invoice-state').value = 'PR';
+  el('finance-invoice-deductions').value = '0';
+  el('finance-invoice-iss').value = '0';
+  populatePartySelects();
+  applyApollusRolePreset();
+  setInvoiceDriveLink('');
   el('finance-invoice-fields').hidden = true;
   el('finance-installments-section').hidden = true;
   el('finance-entry-delete').hidden = true;
@@ -730,20 +978,37 @@ function openFinanceEntry(id = '') {
     el('finance-entry-installments').value = entry.installments?.length || 1;
     el('finance-entry-installments').disabled = true;
     el('finance-entry-interval').disabled = true;
-    el('finance-invoice-required').checked = Boolean(entry.invoice_required);
-    el('finance-invoice-fields').hidden = !entry.invoice_required;
-    el('finance-invoice-status').value = entry.invoice_status || 'nao_necessaria';
-    el('finance-invoice-number').value = entry.invoice_number || '';
-    el('finance-invoice-issue-date').value = entry.invoice_issue_date || '';
-    el('finance-invoice-competence').value = entry.invoice_competence || '';
-    el('finance-invoice-customer').value = entry.invoice_customer || '';
-    el('finance-invoice-customer-document').value = entry.invoice_customer_document || '';
-    el('finance-invoice-service').value = entry.invoice_service || '';
-    el('finance-invoice-tax-code').value = entry.invoice_taxation_code || '';
-    el('finance-invoice-nbs').value = entry.invoice_nbs_item || '';
-    el('finance-invoice-city').value = entry.invoice_city || 'Curitiba-PR';
-    el('finance-invoice-amount').value = entry.invoice_amount || entry.amount_total || '';
-    el('finance-invoice-url').value = entry.invoice_document_url || '';
+    const invoice = invoiceForEntry(entry);
+    el('finance-invoice-required').checked = Boolean(invoice);
+    el('finance-invoice-fields').hidden = !invoice;
+    if (invoice) {
+      el('finance-invoice-direction').value = invoice.invoice_direction || 'emitida';
+      el('finance-invoice-role').value = invoice.apollus_role || 'nenhum';
+      el('finance-invoice-status').value = invoice.status || 'pendente';
+      el('finance-invoice-number').value = invoice.invoice_number || '';
+      el('finance-invoice-issue-date').value = invoice.issue_date || '';
+      el('finance-invoice-competence').value = invoice.competence_date || '';
+      el('finance-invoice-dps-series').value = invoice.dps_series || '';
+      el('finance-invoice-dps-number').value = invoice.dps_number || '';
+      populatePartySelects({
+        'finance-invoice-provider': invoice.provider_party_id || '',
+        'finance-invoice-customer': invoice.customer_party_id || '',
+        'finance-invoice-intermediary': invoice.intermediary_party_id || '',
+      });
+      el('finance-invoice-service').value = invoice.service_description || '';
+      el('finance-invoice-tax-code').value = invoice.taxation_code || '';
+      el('finance-invoice-nbs').value = invoice.nbs_item || '';
+      el('finance-invoice-city').value = invoice.incidence_city || 'Curitiba';
+      el('finance-invoice-state').value = invoice.incidence_state || 'PR';
+      el('finance-invoice-amount').value = invoice.service_amount ?? entry.amount_total ?? '';
+      el('finance-invoice-deductions').value = invoice.deductions_amount ?? 0;
+      el('finance-invoice-iss').value = invoice.iss_amount ?? 0;
+      el('finance-invoice-net').value = invoice.net_amount ?? '';
+      el('finance-invoice-url').value = invoice.drive_url || '';
+      el('finance-invoice-notes').value = invoice.notes || '';
+      setInvoiceDriveLink(invoice.drive_url || '');
+      applyApollusRolePreset();
+    }
     el('finance-entry-delete').hidden = !hasPermission('finance.delete');
     renderInstallments(entry);
   } else {
@@ -772,10 +1037,15 @@ async function saveFinanceEntry(event) {
   const message = el('finance-entry-message');
   setFormMessage(message);
   setButtonLoading(button, true);
+  let createdEntryId = '';
   try {
     const existingEntry = financeState.entries.find((item) => item.id === financeState.editingEntryId);
+    const existingInvoice = invoiceForEntry(existingEntry);
     const canManageInvoice = hasPermission('finance.invoice');
-    const invoiceRequired = canManageInvoice ? el('finance-invoice-required').checked : Boolean(existingEntry?.invoice_required);
+    const invoiceEnabled = canManageInvoice ? el('finance-invoice-required').checked : Boolean(existingInvoice);
+    if (existingInvoice && canManageInvoice && !invoiceEnabled) {
+      throw new Error('Uma NFS-e já registrada não pode ser apagada do histórico. Marque a nota como cancelada se ela não for mais válida.');
+    }
     const payload = {
       entry_type: el('finance-entry-type').value,
       description: el('finance-entry-description').value.trim(),
@@ -788,49 +1058,40 @@ async function saveFinanceEntry(event) {
       project_id: el('finance-entry-project').value || null,
       payment_method: el('finance-entry-method').value.trim() || null,
       notes: el('finance-entry-notes').value.trim() || null,
-      invoice_required: invoiceRequired,
-      invoice_status: canManageInvoice ? (invoiceRequired ? el('finance-invoice-status').value : 'nao_necessaria') : existingEntry?.invoice_status || 'nao_necessaria',
-      invoice_number: canManageInvoice ? (invoiceRequired ? el('finance-invoice-number').value.trim() || null : null) : existingEntry?.invoice_number || null,
-      invoice_issue_date: canManageInvoice ? (invoiceRequired ? el('finance-invoice-issue-date').value || null : null) : existingEntry?.invoice_issue_date || null,
-      invoice_competence: canManageInvoice ? (invoiceRequired ? el('finance-invoice-competence').value || null : null) : existingEntry?.invoice_competence || null,
-      invoice_customer: canManageInvoice ? (invoiceRequired ? el('finance-invoice-customer').value.trim() || null : null) : existingEntry?.invoice_customer || null,
-      invoice_customer_document: canManageInvoice ? (invoiceRequired ? el('finance-invoice-customer-document').value.trim() || null : null) : existingEntry?.invoice_customer_document || null,
-      invoice_service: canManageInvoice ? (invoiceRequired ? el('finance-invoice-service').value.trim() || null : null) : existingEntry?.invoice_service || null,
-      invoice_taxation_code: canManageInvoice ? (invoiceRequired ? el('finance-invoice-tax-code').value.trim() || null : null) : existingEntry?.invoice_taxation_code || null,
-      invoice_nbs_item: canManageInvoice ? (invoiceRequired ? el('finance-invoice-nbs').value.trim() || null : null) : existingEntry?.invoice_nbs_item || null,
-      invoice_city: canManageInvoice ? (invoiceRequired ? el('finance-invoice-city').value.trim() || 'Curitiba-PR' : 'Curitiba-PR') : existingEntry?.invoice_city || 'Curitiba-PR',
-      invoice_amount: canManageInvoice ? (invoiceRequired ? Number(el('finance-invoice-amount').value || el('finance-entry-amount').value) : null) : existingEntry?.invoice_amount || null,
-      invoice_document_url: canManageInvoice ? (invoiceRequired ? el('finance-invoice-url').value.trim() || null : null) : existingEntry?.invoice_document_url || null,
       updated_by: financeState.session.user.id,
     };
     if (!payload.description || !payload.amount_total || !payload.competence_date || !payload.due_date) throw new Error('Preencha os campos obrigatórios.');
-    if (payload.invoice_document_url && !/^https?:\/\//i.test(payload.invoice_document_url)) throw new Error('O link da nota precisa começar com http:// ou https://.');
+    mirrorInvoiceIntoLegacyEntryPayload(payload, invoiceEnabled, existingEntry);
 
     let saved;
     if (financeState.editingEntryId) {
       const { data, error } = await supabase.from('financial_entries').update(payload).eq('id', financeState.editingEntryId).select().single();
       if (error) throw error;
       saved = data;
+      if (invoiceEnabled && canManageInvoice) await saveLinkedInvoice(saved.id, existingInvoice?.id || '');
     } else {
       payload.created_by = financeState.session.user.id;
       const { data, error } = await supabase.from('financial_entries').insert(payload).select().single();
       if (error) throw error;
       saved = data;
+      createdEntryId = saved.id;
+      if (invoiceEnabled && canManageInvoice) await saveLinkedInvoice(saved.id);
       const count = Math.max(1, Number(el('finance-entry-installments').value || 1));
       const interval = Math.max(0, Number(el('finance-entry-interval').value || 1));
       const { error: installmentError } = await supabase.rpc('create_financial_installments', {
         p_entry_id: saved.id, p_count: count, p_first_due_date: payload.due_date, p_interval_months: interval,
       });
-      if (installmentError) {
-        await supabase.rpc('apollus_cleanup_failed_financial_entry', { target_id: saved.id });
-        throw installmentError;
-      }
+      if (installmentError) throw installmentError;
     }
     await loadFinanceData();
     el('finance-entry-dialog').close();
-    notify('Lançamento financeiro salvo.', 'success');
+    notify(invoiceEnabled ? 'Lançamento e NFS-e salvos.' : 'Lançamento financeiro salvo.', 'success');
   } catch (error) {
     console.error(error);
+    if (createdEntryId) {
+      const { error: cleanupError } = await supabase.rpc('apollus_cleanup_failed_financial_entry', { target_id: createdEntryId });
+      if (cleanupError) console.error('Falha ao limpar lançamento incompleto:', cleanupError);
+    }
     setFormMessage(message, error.message || 'Não foi possível salvar o lançamento.', 'error');
   } finally {
     setButtonLoading(button, false);
@@ -898,16 +1159,24 @@ async function moveFinanceEntryToTrash() {
 }
 
 function exportCsv(entries, filename) {
-  const headers = ['Descrição', 'Tipo', 'Categoria', 'Competência', 'Vencimento', 'Valor total', 'Pago/recebido', 'Saldo', 'Status', 'Cliente/fornecedor', 'CPF/CNPJ', 'Projeto', 'Nota fiscal', 'Número NFS-e', 'Data emissão', 'Serviço', 'Código tributação', 'NBS', 'Município'];
-  const rows = entries.map((entry) => [
-    entry.description, entry.entry_type, entry.category, entry.competence_date, entry.due_date,
-    Number(entry.amount_total).toFixed(2), Number(entry.amount_paid).toFixed(2), entryBalance(entry).toFixed(2),
-    computedStatus(entry), entry.partner_name || '', entry.partner_document || '', entry.project?.title || '',
-    entry.invoice_status || '', entry.invoice_number || '', entry.invoice_issue_date || '', entry.invoice_service || '',
-    entry.invoice_taxation_code || '', entry.invoice_nbs_item || '', entry.invoice_city || '',
-  ]);
-  const quote = (value) => `"${String(value ?? '').replaceAll('"', '""')}"`;
-  const csv = '\ufeff' + [headers, ...rows].map((row) => row.map(quote).join(';')).join('\r\n');
+  const headers = ['Descrição', 'Tipo', 'Categoria', 'Competência', 'Vencimento', 'Valor total', 'Pago/recebido', 'Saldo', 'Status', 'Cliente/fornecedor', 'CPF/CNPJ', 'Projeto', 'NFS-e status', 'Tipo NFS-e', 'Papel Apollus', 'Número NFS-e', 'Data emissão', 'Competência NFS-e', 'Prestador', 'Tomador', 'Intermediário', 'Serviço', 'Código tributação', 'NBS', 'Município incidência', 'UF incidência', 'Valor serviço', 'Deduções', 'ISS', 'Valor líquido', 'Link Drive'];
+  const rows = entries.map((entry) => {
+    const invoice = invoiceForEntry(entry);
+    return [
+      entry.description, entry.entry_type, entry.category, entry.competence_date, entry.due_date,
+      Number(entry.amount_total).toFixed(2), Number(entry.amount_paid).toFixed(2), entryBalance(entry).toFixed(2),
+      computedStatus(entry), entry.partner_name || '', entry.partner_document || '', entry.project?.title || '',
+      invoice?.status || '', invoiceDirectionLabel(invoice?.invoice_direction), apollusRoleLabel(invoice?.apollus_role), invoice?.invoice_number || '', invoice?.issue_date || '', invoice?.competence_date || '',
+      partyName(invoice?.provider_party_id), partyName(invoice?.customer_party_id), partyName(invoice?.intermediary_party_id), invoice?.service_description || '', invoice?.taxation_code || '', invoice?.nbs_item || '', invoice?.incidence_city || '', invoice?.incidence_state || '',
+      invoice?.service_amount == null ? '' : Number(invoice.service_amount).toFixed(2), Number(invoice?.deductions_amount || 0).toFixed(2), Number(invoice?.iss_amount || 0).toFixed(2), invoice?.net_amount == null ? '' : Number(invoice.net_amount).toFixed(2), invoice?.drive_url || '',
+    ];
+  });
+  const safeCsvCell = (value) => {
+    const text = String(value ?? '');
+    const hardened = /^[=+\-@]/.test(text) ? `'${text}` : text;
+    return `"${hardened.replaceAll('"', '""')}"`;
+  };
+  const csv = '\ufeff' + [headers, ...rows].map((row) => row.map(safeCsvCell).join(';')).join('\r\n');
   const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
   const link = document.createElement('a');
   link.href = url; link.download = filename; link.click();
@@ -1096,7 +1365,36 @@ function setupDashboardModuleEvents() {
   el('finance-payment-form')?.addEventListener('submit', savePayment);
   el('finance-entry-delete')?.addEventListener('click', moveFinanceEntryToTrash);
   el('finance-entry-type')?.addEventListener('change', () => populateEntryCategories());
-  el('finance-invoice-required')?.addEventListener('change', () => { el('finance-invoice-fields').hidden = !el('finance-invoice-required').checked; });
+  el('finance-invoice-required')?.addEventListener('change', () => {
+    const existingEntry = financeState.entries.find((item) => item.id === financeState.editingEntryId);
+    if (!el('finance-invoice-required').checked && invoiceForEntry(existingEntry)) {
+      el('finance-invoice-required').checked = true;
+      el('finance-invoice-fields').hidden = false;
+      notify('NFS-e já registrada: para preservar o histórico, altere o status para Cancelada em vez de remover.', 'error');
+      return;
+    }
+    const enabled = el('finance-invoice-required').checked;
+    el('finance-invoice-fields').hidden = !enabled;
+    if (enabled) {
+      if (!el('finance-invoice-amount').value) el('finance-invoice-amount').value = el('finance-entry-amount').value || '';
+      if (!el('finance-invoice-net').value) el('finance-invoice-net').value = el('finance-entry-amount').value || '';
+      if (!el('finance-invoice-competence').value) el('finance-invoice-competence').value = el('finance-entry-competence').value || todayIso();
+      applyInvoiceDirectionPreset();
+    }
+  });
+  el('finance-invoice-direction')?.addEventListener('change', applyInvoiceDirectionPreset);
+  el('finance-invoice-role')?.addEventListener('change', applyApollusRolePreset);
+  el('finance-invoice-url')?.addEventListener('input', (event) => setInvoiceDriveLink(event.target.value.trim()));
+  el('finance-party-new')?.addEventListener('click', () => openPartyEditor());
+  document.querySelectorAll('[data-party-edit-from]').forEach((button) => button.addEventListener('click', () => {
+    const selectId = button.dataset.partyEditFrom;
+    const partyId = el(selectId)?.value || '';
+    if (!partyId) return openPartyEditor('', selectId);
+    openPartyEditor(partyId, selectId);
+  }));
+  el('finance-party-editor-close')?.addEventListener('click', closePartyEditor);
+  el('finance-party-editor-cancel')?.addEventListener('click', closePartyEditor);
+  el('finance-party-save')?.addEventListener('click', saveFiscalParty);
   el('finance-month')?.addEventListener('change', renderFinance);
   ['finance-search', 'finance-status-filter', 'finance-category-filter'].forEach((id) => el(id)?.addEventListener(id === 'finance-search' ? 'input' : 'change', renderFinanceList));
   document.querySelectorAll('[data-finance-view]').forEach((button) => button.addEventListener('click', () => setFinanceView(button.dataset.financeView)));

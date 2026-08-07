@@ -2616,3 +2616,180 @@ img { max-width: 100%; display: block; }
   }
 }
 
+
+
+/* ---------- NFS-e V2 ---------- */
+.invoice-master-toggle {
+  padding: 2px 0 8px;
+}
+
+.invoice-v2 {
+  display: grid;
+  gap: 14px;
+  margin-top: 12px;
+}
+
+.invoice-v2-heading {
+  padding: 15px 16px;
+  border: 1px solid rgba(16,16,16,.12);
+  border-radius: 15px;
+  background: linear-gradient(135deg, rgba(189,135,255,.13), rgba(119,228,223,.08));
+}
+
+.invoice-v2-heading h3,
+.invoice-block h4,
+.invoice-party-editor h4 {
+  margin: 0;
+}
+
+.invoice-v2-heading p:last-child {
+  margin: 7px 0 0;
+  color: var(--muted);
+  font-size: .78rem;
+  line-height: 1.55;
+}
+
+.invoice-role-note {
+  margin: -4px 0 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(189,135,255,.10);
+  color: #5f437b;
+  font-size: .75rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.invoice-block {
+  display: grid;
+  gap: 12px;
+  padding: 15px;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: rgba(255,255,255,.66);
+}
+
+.invoice-block-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.invoice-block-header .admin-kicker {
+  margin-bottom: 4px;
+  color: var(--muted);
+  font-size: .62rem;
+}
+
+.invoice-parties-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.invoice-party-field {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.invoice-party-field > label {
+  min-width: 0;
+}
+
+.invoice-party-edit {
+  width: fit-content;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #7752a1;
+  font-size: .7rem;
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.invoice-help {
+  color: var(--muted);
+  font-size: .72rem;
+  line-height: 1.45;
+}
+
+.invoice-party-editor {
+  display: grid;
+  gap: 12px;
+  margin-top: 4px;
+  padding: 14px;
+  border: 2px dashed rgba(16,16,16,.2);
+  border-radius: 14px;
+  background: #fffaf3;
+}
+
+.invoice-party-editor > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.invoice-party-editor > header button {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: white;
+  font-size: 1.15rem;
+}
+
+.invoice-party-editor-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.invoice-drive-field > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+#finance-invoice-open-drive {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  padding: 8px 12px;
+  background: white;
+  color: var(--ink);
+  text-decoration: none;
+  font-size: .72rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.invoice-status.nao_necessaria {
+  background: rgba(255,255,255,.06);
+  color: rgba(255,255,255,.45);
+}
+
+.invoice-status.pendente { background: rgba(242,170,37,.14); color: #ffc558; }
+.invoice-status.emitida { background: rgba(49,185,107,.14); color: #5edb8e; }
+.invoice-status.cancelada { background: rgba(255,255,255,.08); color: #bbb; }
+.invoice-status.substituida { background: rgba(189,135,255,.15); color: #cfadff; }
+
+@media (max-width: 900px) {
+  .invoice-parties-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 640px) {
+  .invoice-block-header { align-items: flex-start; flex-direction: column; }
+  .invoice-drive-field > div { grid-template-columns: 1fr; }
+  #finance-invoice-open-drive { width: 100%; }
+}
