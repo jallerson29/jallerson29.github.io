@@ -2255,3 +2255,364 @@ img { max-width: 100%; display: block; }
   background: rgba(255, 225, 45, .42);
   color: #4d4200;
 }
+
+/* ==========================================================
+   STABLE 1 P1 — CONTROLE EXCLUSIVO DO PROPRIETÁRIO
+   Corrige o editor de perfis/permissões.
+   ========================================================== */
+
+#access-profile-dialog {
+  width: min(1040px, calc(100vw - 28px));
+}
+
+#access-profile-dialog .access-profile-form {
+  width: 100%;
+  max-height: calc(100vh - 28px);
+  gap: 22px;
+  padding: clamp(24px, 3vw, 38px);
+  scrollbar-gutter: stable;
+}
+
+#access-profile-dialog .dialog-header {
+  margin-bottom: 0;
+  padding-bottom: 18px;
+  border-bottom: 1px solid rgba(16,16,16,.12);
+}
+
+#access-profile-dialog .dialog-header > div {
+  min-width: 0;
+}
+
+#access-profile-dialog .dialog-header h2 {
+  max-width: 820px;
+  font-size: clamp(2.8rem, 5.5vw, 4.65rem);
+}
+
+#access-profile-dialog .dialog-close {
+  transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
+}
+
+#access-profile-dialog .dialog-close:hover {
+  transform: rotate(4deg) translateY(-2px);
+  background: var(--yellow);
+  box-shadow: 4px 4px 0 var(--purple);
+}
+
+/* Dados básicos */
+.access-profile-form .form-grid.two-columns {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 18px;
+}
+
+.access-profile-form .form-grid label {
+  align-content: start;
+}
+
+.access-profile-form .form-grid label > span {
+  font-size: .78rem;
+  font-weight: 900;
+}
+
+.access-profile-form .form-grid label > small {
+  min-height: 2.8em;
+  color: var(--muted);
+  font-size: .66rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.access-profile-form .form-grid input,
+.access-profile-form .form-grid select {
+  min-height: 50px;
+  border-radius: 15px;
+}
+
+.access-profile-form .form-grid input[readonly],
+.access-profile-form .form-grid input:disabled,
+.access-profile-form .form-grid select:disabled {
+  background: #ebe5dc;
+  color: #6e6861;
+  border-color: rgba(16,16,16,.18);
+  cursor: not-allowed;
+}
+
+/* Switches */
+.access-profile-switches {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid rgba(16,16,16,.08);
+  border-radius: 20px;
+  background:
+    linear-gradient(135deg, rgba(189,135,255,.08), rgba(119,228,223,.06)),
+    rgba(16,16,16,.025);
+}
+
+.access-profile-switches .settings-toggle {
+  min-height: 76px;
+  margin: 0;
+  padding: 15px 16px;
+  border: 1px solid rgba(16,16,16,.15);
+  border-radius: 16px;
+  background: rgba(255,255,255,.78);
+  transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease;
+}
+
+.access-profile-switches .settings-toggle:hover {
+  transform: translateY(-2px);
+  border-color: rgba(189,135,255,.72);
+  box-shadow: 0 8px 20px rgba(78,43,104,.08);
+}
+
+.access-profile-switches .settings-toggle input {
+  flex: 0 0 auto;
+  width: 20px !important;
+  height: 20px !important;
+  margin: 1px 0 0;
+  accent-color: #101010;
+}
+
+/* Editor de permissões */
+.permissions-editor {
+  display: grid;
+  gap: 14px;
+  padding-top: 4px;
+}
+
+.permissions-editor > header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  padding-bottom: 4px;
+}
+
+.permissions-editor > header h3 {
+  margin: 5px 0 0;
+  font-size: 1.15rem;
+  letter-spacing: -.02em;
+}
+
+.permissions-editor > header .mini-action {
+  flex: 0 0 auto;
+  min-height: 38px;
+  padding: 9px 14px;
+  background: #fff;
+}
+
+.access-permissions-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+/* Sobrescreve o seletor genérico .admin-dialog-card label */
+.access-permissions-grid .permission-group {
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid rgba(16,16,16,.16);
+  border-radius: 18px;
+  background: rgba(255,255,255,.78);
+  box-shadow: 0 8px 24px rgba(50,31,63,.035);
+}
+
+.permission-group > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 52px;
+  padding: 11px 13px 11px 15px;
+  background: #17151b;
+  color: #fff;
+}
+
+.permission-group > header strong {
+  min-width: 0;
+  font-size: .82rem;
+  letter-spacing: -.01em;
+}
+
+.permission-group > header button {
+  flex: 0 0 auto;
+  min-height: 30px;
+  padding: 6px 10px;
+  border: 1px solid rgba(255,255,255,.24);
+  border-radius: 999px;
+  background: rgba(255,255,255,.08);
+  color: #fff;
+  font: inherit;
+  font-size: .61rem;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  transition: background .16s ease, border-color .16s ease, transform .16s ease;
+}
+
+.permission-group > header button:hover {
+  transform: translateY(-1px);
+  border-color: var(--purple);
+  background: rgba(189,135,255,.23);
+}
+
+.permission-group > header button:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.permission-group label {
+  display: flex !important;
+  grid-template-columns: none !important;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px !important;
+  min-height: 48px;
+  margin: 0;
+  padding: 11px 15px;
+  border-top: 1px solid rgba(16,16,16,.075);
+  background: transparent;
+  cursor: pointer;
+  font-size: .75rem !important;
+  font-weight: 750 !important;
+  transition: background .14s ease;
+}
+
+.permission-group label:hover {
+  background: rgba(189,135,255,.075);
+}
+
+.permission-group label span {
+  flex: 1 1 auto;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.permission-group label input[type="checkbox"] {
+  order: 2;
+  flex: 0 0 auto;
+  width: 19px !important;
+  height: 19px !important;
+  min-height: 0 !important;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  accent-color: #101010;
+  box-shadow: none !important;
+  transform: none !important;
+  cursor: pointer;
+}
+
+.permission-group label input[type="checkbox"]:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+/* Destaque discreto para o bloco financeiro */
+.permission-group:nth-child(5) > header {
+  background:
+    linear-gradient(100deg, #17151b 0%, #2f2639 100%);
+}
+
+.permission-group:nth-child(5) > header::after {
+  content: "MFA";
+  margin-left: auto;
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: var(--yellow);
+  color: #101010;
+  font-size: .52rem;
+  font-weight: 950;
+  letter-spacing: .06em;
+}
+
+/* O botão precisa continuar depois do badge */
+.permission-group:nth-child(5) > header button {
+  margin-left: 0;
+}
+
+/* Aviso e rodapé */
+.access-profile-form .security-note {
+  margin: 0;
+}
+
+#access-profile-dialog .dialog-actions {
+  position: sticky;
+  bottom: -1px;
+  z-index: 6;
+  margin: 0 -8px -8px;
+  padding: 14px 8px 8px;
+  background: linear-gradient(to bottom, rgba(247,239,228,0), var(--paper) 28%);
+}
+
+#access-profile-dialog .dialog-actions .admin-btn {
+  min-width: 142px;
+}
+
+#access-profile-message:not(:empty) {
+  margin: -8px 0 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+}
+
+/* Mobile / tablet */
+@media (max-width: 760px) {
+  #access-profile-dialog {
+    width: calc(100vw - 12px);
+    max-height: calc(100dvh - 12px);
+  }
+
+  #access-profile-dialog .access-profile-form {
+    max-height: calc(100dvh - 12px);
+    padding: 20px 16px;
+    border-radius: 22px;
+    box-shadow: 6px 6px 0 var(--purple);
+  }
+
+  #access-profile-dialog .dialog-header h2 {
+    font-size: clamp(2.4rem, 13vw, 3.4rem);
+  }
+
+  .access-profile-form .form-grid.two-columns,
+  .access-profile-switches,
+  .access-permissions-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .access-profile-form .form-grid label > small {
+    min-height: 0;
+  }
+
+  .permissions-editor > header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .permissions-editor > header .mini-action {
+    width: 100%;
+  }
+
+  .permission-group > header {
+    min-height: 50px;
+  }
+
+  #access-profile-dialog .dialog-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 9px;
+  }
+
+  #access-profile-dialog .dialog-actions .admin-btn {
+    min-width: 0;
+    width: 100%;
+  }
+}
+
+@media (max-width: 430px) {
+  #access-profile-dialog .dialog-actions {
+    grid-template-columns: 1fr;
+  }
+}
+

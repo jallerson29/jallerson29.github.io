@@ -1,47 +1,53 @@
 <!DOCTYPE html>
-
 <html lang="pt-BR">
 <head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<meta content="#101010" name="theme-color"/>
-<title>Admin | Apollus</title>
-<link href="../docs/apollus-logo-transparent.png" rel="icon" type="image/png"/>
-<link href="https://fonts.googleapis.com" rel="preconnect"/>
-<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&amp;family=Inter:wght@400;500;600;700;800&amp;family=Permanent+Marker&amp;display=swap" rel="stylesheet"/>
-<link href="admin.css" rel="stylesheet"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#101010">
+  <title>Admin | Apollus</title>
+
+  <link rel="icon" type="image/png" href="../docs/apollus-logo-transparent.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&family=Permanent+Marker&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="admin.css?v=20260807-stable1-p1">
 </head>
-<body class="admin-login-body" data-admin-page="login" data-apollus-version="finance-access-v1">
-<main class="login-layout">
-<section aria-hidden="true" class="login-art">
-<img alt="" src="../docs/apollus-logo-transparent.png"/>
-<p>Arte • Som • Experiência</p>
-</section>
-<section class="login-panel">
-<div class="login-card">
-<a class="login-home" href="../index.html">← Voltar para o site</a>
-<p class="admin-kicker">Área administrativa</p>
-<h1>Entrar</h1>
-<p class="login-intro">Gerencie os projetos e a agenda pública da Apollus.</p>
-<div class="admin-alert warning" hidden="" id="config-warning">
+<body data-admin-page="login" class="admin-login-body">
+  <main class="login-layout">
+    <section class="login-art" aria-hidden="true">
+      <img src="../docs/apollus-logo-transparent.png" alt="">
+      <p>Arte • Som • Experiência</p>
+    </section>
+
+    <section class="login-panel">
+      <div class="login-card">
+        <a href="../index.html" class="login-home">← Voltar para o site</a>
+        <p class="admin-kicker">Área administrativa</p>
+        <h1>Entrar</h1>
+        <p class="login-intro">Gerencie os projetos e a agenda pública da Apollus.</p>
+
+        <div id="config-warning" class="admin-alert warning" hidden>
           Configure o arquivo <strong>supabase-config.js</strong> antes de entrar.
         </div>
-<form class="admin-form" id="login-form">
-<label>
-<span>E-mail</span>
-<input autocomplete="username" id="login-email" placeholder="admin@apollusart.com" required="" type="email"/>
-</label>
-<label>
-<span>Senha</span>
-<input autocomplete="current-password" id="login-password" placeholder="••••••••" required="" type="password"/>
-</label>
-<button class="admin-btn primary" id="login-submit" type="submit">Entrar</button>
-<p aria-live="polite" class="form-message" id="login-message"></p>
-</form>
-</div>
-</section>
-</main>
-<script src="admin.js" type="module"></script><script src="finance.js" type="module"></script>
+
+        <form id="login-form" class="admin-form">
+          <label>
+            <span>E-mail</span>
+            <input id="login-email" type="email" autocomplete="username" required placeholder="admin@apollusart.com">
+          </label>
+
+          <label>
+            <span>Senha</span>
+            <input id="login-password" type="password" autocomplete="current-password" required placeholder="••••••••">
+          </label>
+
+          <button id="login-submit" class="admin-btn primary" type="submit">Entrar</button>
+          <p id="login-message" class="form-message" aria-live="polite"></p>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="admin.js?v=20260807-stable1-p1"></script>
 </body>
 </html>

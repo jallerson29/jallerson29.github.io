@@ -41,7 +41,6 @@ const financeState = {
   editingEntryId: null,
   activePaymentInstallmentId: null,
   mfa: { currentLevel: 'aal1', nextLevel: 'aal1', factors: [], verifiedFactors: [] },
-  observer: null,
 };
 
 const moneyFormatter = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -1136,6 +1135,9 @@ function setupDashboardModuleEvents() {
     if (!window.confirm('Sair de todos os dispositivos, inclusive deste?')) return;
     await supabase.auth.signOut({ scope: 'global' });
     window.location.replace('login.html');
+  });
+  window.addEventListener('apollus-access-refresh', () => {
+    applyAccessVisibility();
   });
   window.addEventListener('apollus-finance-refresh', async () => {
     if (hasPermission('finance.view') && financeIsUnlocked()) await loadFinanceData();

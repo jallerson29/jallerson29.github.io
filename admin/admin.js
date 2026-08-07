@@ -187,6 +187,10 @@ function setGlobalMessage(message, type = '') {
   if (message) setTimeout(() => { box.hidden = true; }, 5000);
 }
 
+function requestAccessRefresh() {
+  window.dispatchEvent(new CustomEvent('apollus-access-refresh'));
+}
+
 function setButtonLoading(button, loading, text = 'Salvando...') {
   if (!button) return;
   if (loading) {
@@ -353,6 +357,7 @@ async function initDashboard() {
   renderTrash();
   renderSiteSettingsForm();
   renderOverview();
+  requestAccessRefresh();
 }
 
 function setupDashboardEvents() {
@@ -803,6 +808,7 @@ function renderPresavesAdmin() {
   list.querySelectorAll('[data-presave-edit]').forEach((button) => button.addEventListener('click', () => openPresaveForm(button.dataset.presaveEdit)));
   list.querySelectorAll('[data-presave-delete]').forEach((button) => button.addEventListener('click', () => confirmDeletePresave(button.dataset.presaveDelete)));
   list.querySelectorAll('[data-presave-toggle]').forEach((button) => button.addEventListener('click', () => togglePresavePublished(button.dataset.presaveToggle)));
+  requestAccessRefresh();
 }
 
 function resetPresaveForm() {
@@ -1184,6 +1190,7 @@ function renderTrash() {
 
   list.querySelectorAll('[data-trash-restore]').forEach((button) => button.addEventListener('click', () => restoreTrashItem(button.dataset.trashEntity, button.dataset.trashRestore)));
   list.querySelectorAll('[data-trash-delete]').forEach((button) => button.addEventListener('click', () => confirmPermanentDelete(button.dataset.trashEntity, button.dataset.trashDelete)));
+  requestAccessRefresh();
 }
 
 function findTrashItem(entityType, id) {
