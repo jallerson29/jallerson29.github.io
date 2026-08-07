@@ -1,0 +1,15 @@
+APOLLUS — FINANCEIRO + ACESSOS V1
+
+1) Faça backup.
+2) Supabase SQL Editor: execute sql/finance-access-v1.sql uma única vez.
+3) Publique a Edge Function:
+   supabase login
+   supabase link --project-ref mlbryqllapbnilqxtkzy
+   supabase functions deploy manage-admin-user
+   supabase secrets set ADMIN_REDIRECT_URL=https://apollusart.com/admin/login.html
+4) Copie os arquivos para o repositório, sem substituir supabase-config.js.
+5) git add .
+   git commit -m "Adiciona financeiro seguro e controle de acessos"
+   git push
+6) Entre como Jallerson → Segurança → configure o autenticador.
+7) Faça os testes descritos em README_FINANCE_ACCESS_V1.md.

@@ -249,7 +249,7 @@ async function initLogin() {
     }
 
     if (!await verifyAdmin()) {
-      await supabase.auth.signOut();
+      await supabase.auth.signOut({ scope: 'local' });
       setButtonLoading(submit, false);
       setMessage(message, 'Esse usuário não possui acesso administrativo.', 'error');
       return;
@@ -267,7 +267,7 @@ async function initDashboard() {
 
   const session = await getSession();
   if (!session || !await verifyAdmin()) {
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: 'local' });
     window.location.replace('login.html');
     return;
   }
@@ -294,7 +294,7 @@ function setupDashboardEvents() {
   });
 
   document.getElementById('logout-button').addEventListener('click', async () => {
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: 'local' });
     window.location.replace('login.html');
   });
 
@@ -364,10 +364,11 @@ function setupDashboardEvents() {
     if (typeof state.confirmHandler === 'function') await state.confirmHandler();
     document.getElementById('confirm-dialog').close();
   });
+  window.addEventListener('apollus-trash-refresh', loadTrash);
 }
 
 function switchPanel(panel) {
-  const titles = { overview: 'Visão geral', projects: 'Projetos', playlists: 'Playlists', presaves: 'Pré-save', agenda: 'Agenda', history: 'Histórico', trash: 'Lixeira', settings: 'Configurações' };
+  const titles = { overview: 'Visão geral', projects: 'Projetos', playlists: 'Playlists', presaves: 'Pré-save', agenda: 'Agenda', finance: 'Financeiro', access: 'Usuários e acessos', security: 'Segurança', history: 'Histórico', trash: 'Lixeira', settings: 'Configurações' };
   document.querySelectorAll('[data-admin-tab]').forEach((button) => button.classList.toggle('active', button.dataset.adminTab === panel));
   document.querySelectorAll('[data-panel]').forEach((section) => section.classList.toggle('active', section.dataset.panel === panel));
   document.getElementById('admin-page-title').textContent = titles[panel] || 'Painel';
@@ -1006,6 +1007,7 @@ function trashEntityInfo(entityType = '') {
     agenda: { label: 'Agenda', table: 'agenda_events', icon: '▣', className: 'agenda' },
     playlist: { label: 'Playlist', table: 'streaming_playlists', icon: '▶', className: 'playlist' },
     presave: { label: 'Pré-save', table: 'presave_campaigns', icon: '↓', className: 'presave' },
+    finance: { label: 'Financeiro', table: 'financial_entries', icon: 'R$', className: 'finance' },
   }[entityType] || null;
 }
 
@@ -1019,29 +1021,36 @@ function trashItemMedia(item = {}) {
 
 async function loadTrash() {
   const loading = document.getElementById('trash-admin-loading');
-  const results = await Promise.all([
-    supabase.from('projects').select('*').not('deleted_at', 'is', null).order('deleted_at', { ascending: false }),
-    supabase.from('agenda_events').select('*').not('deleted_at', 'is', null).order('deleted_at', { ascending: false }),
-    supabase.from('streaming_playlists').select('*').not('deleted_at', 'is', null).order('deleted_at', { ascending: false }),
-    supabase.from('presave_campaigns').select('*').not('deleted_at', 'is', null).order('deleted_at', { ascending: false }),
-  ]);
-
-  if (loading) loading.hidden = true;
-  const error = results.find((result) => result.error)?.error;
-  if (error) {
-    console.warn('Lixeira indisponível. Execute trash-v1.sql.', error);
-    state.trashItems = [];
-    renderTrash();
-    return;
+  let canSeeFinance = false;
+  try {
+    const result = await supabase.rpc('finance_access', { requested_permission: 'finance.view' });
+    canSeeFinance = result.data === true;
+  } catch (error) {
+    console.warn('Não foi possível verificar o acesso financeiro da lixeira.', error);
+  }
+  const requests = [
+    { entity_type: 'project', promise: supabase.from('projects').select('*').not('deleted_at', 'is', null).order('deleted_at', { ascending: false }) },
+    { entity_type: 'agenda', promise: supabase.from('agenda_events').select('*').not('deleted_at', 'is', null).order('deleted_at', { ascending: false }) },
+    { entity_type: 'playlist', promise: supabase.from('streaming_playlists').select('*').not('deleted_at', 'is', null).order('deleted_at', { ascending: false }) },
+    { entity_type: 'presave', promise: supabase.from('presave_campaigns').select('*').not('deleted_at', 'is', null).order('deleted_at', { ascending: false }) },
+  ];
+  if (canSeeFinance === true) {
+    requests.push({ entity_type: 'finance', promise: supabase.from('financial_entries').select('*').not('deleted_at', 'is', null).order('deleted_at', { ascending: false }) });
   }
 
-  state.trashItems = [
-    ...(results[0].data || []).map((item) => ({ ...item, entity_type: 'project' })),
-    ...(results[1].data || []).map((item) => ({ ...item, entity_type: 'agenda' })),
-    ...(results[2].data || []).map((item) => ({ ...item, entity_type: 'playlist' })),
-    ...(results[3].data || []).map((item) => ({ ...item, entity_type: 'presave' })),
-  ].sort((a, b) => new Date(b.deleted_at) - new Date(a.deleted_at));
+  const results = await Promise.all(requests.map((request) => request.promise));
+  if (loading) loading.hidden = true;
 
+  const validItems = [];
+  results.forEach((result, index) => {
+    if (result.error) {
+      console.warn(`Lixeira indisponível para ${requests[index].entity_type}.`, result.error);
+      return;
+    }
+    validItems.push(...(result.data || []).map((item) => ({ ...item, entity_type: requests[index].entity_type })));
+  });
+
+  state.trashItems = validItems.sort((a, b) => new Date(b.deleted_at) - new Date(a.deleted_at));
   populateTrashActorFilter();
   renderTrash();
 }
@@ -1074,7 +1083,7 @@ function renderTrash() {
 
   const filtered = state.trashItems.filter((item) => {
     const actorId = item.deleted_by || item.deleted_by_email || item.deleted_by_name;
-    const haystack = `${item.title || ''} ${item.deleted_by_name || ''} ${item.deleted_by_email || ''} ${item.entity_type || ''}`.toLowerCase();
+    const haystack = `${item.title || item.description || ''} ${item.deleted_by_name || ''} ${item.deleted_by_email || ''} ${item.entity_type || ''}`.toLowerCase();
     return (!search || haystack.includes(search))
       && (entity === 'todos' || item.entity_type === entity)
       && (actor === 'todos' || actorId === actor);
@@ -1094,13 +1103,13 @@ function renderTrash() {
         ${media ? `<img src="${escapeHtml(media)}" alt="">` : `<span>${entityInfo.icon}</span>`}
       </div>
       <div class="trash-item-main">
-        <div class="trash-title-row"><h3>${escapeHtml(item.title || 'Sem título')}</h3><time>${escapeHtml(formatDateTime(item.deleted_at))}</time></div>
+        <div class="trash-title-row"><h3>${escapeHtml(item.title || item.description || 'Sem título')}</h3><time>${escapeHtml(formatDateTime(item.deleted_at))}</time></div>
         <div class="trash-meta">
           <span class="history-entity-badge ${entityInfo.className}">${entityInfo.icon} ${escapeHtml(entityInfo.label)}</span>
           <span>Excluído por <strong>${escapeHtml(actorName)}</strong></span>
           ${item.deleted_by_email ? `<span>${escapeHtml(item.deleted_by_email)}</span>` : ''}
         </div>
-        <p>As mídias vinculadas continuam preservadas e serão recuperadas junto com o item.</p>
+        <p>${item.entity_type === 'finance' ? 'As parcelas, pagamentos e dados de nota fiscal permanecem preservados.' : 'As mídias vinculadas continuam preservadas e serão recuperadas junto com o item.'}</p>
       </div>
       <div class="trash-actions">
         <button class="admin-btn restore" type="button" data-trash-restore="${escapeHtml(item.id)}" data-trash-entity="${escapeHtml(item.entity_type)}">↺ Restaurar</button>
@@ -1122,15 +1131,23 @@ async function restoreTrashItem(entityType, id) {
   const entityInfo = trashEntityInfo(entityType);
   if (!item || !entityInfo) return;
 
-  const payload = {
-    deleted_at: null,
-    deleted_by: null,
-    deleted_by_name: null,
-    deleted_by_email: null,
-    published: Boolean(item.deleted_previous_published),
-    deleted_previous_published: null,
-    updated_at: new Date().toISOString(),
-  };
+  const payload = entityType === 'finance'
+    ? {
+      deleted_at: null,
+      deleted_by: null,
+      deleted_by_name: null,
+      deleted_by_email: null,
+      updated_at: new Date().toISOString(),
+    }
+    : {
+      deleted_at: null,
+      deleted_by: null,
+      deleted_by_name: null,
+      deleted_by_email: null,
+      published: Boolean(item.deleted_previous_published),
+      deleted_previous_published: null,
+      updated_at: new Date().toISOString(),
+    };
   const { data, error } = await supabase.from(entityInfo.table).update(payload).eq('id', id).select().single();
   if (error) return setGlobalMessage('Não foi possível restaurar o item.', 'error');
 
@@ -1139,6 +1156,7 @@ async function restoreTrashItem(entityType, id) {
   if (entityType === 'agenda') state.agenda.unshift(data);
   if (entityType === 'playlist') state.playlists.unshift(data);
   if (entityType === 'presave') state.presaves.unshift(data);
+  if (entityType === 'finance') window.dispatchEvent(new CustomEvent('apollus-finance-refresh'));
 
   renderProjectsAdmin();
   renderAgendaAdmin();
@@ -1164,13 +1182,14 @@ function confirmPermanentDelete(entityType, id) {
   if (!item || !entityInfo) return;
   confirmAction(
     'Excluir definitivamente?',
-    `“${item.title || 'Sem título'}” e suas mídias vinculadas serão apagados sem possibilidade de restauração.`,
+    `“${item.title || item.description || 'Sem título'}” e todos os dados vinculados serão apagados sem possibilidade de restauração.`,
     async () => {
       const paths = trashMediaPaths(item);
       const { error } = await supabase.from(entityInfo.table).delete().eq('id', id);
       if (error) return setGlobalMessage('Não foi possível excluir o item definitivamente.', 'error');
       await removeFiles(paths);
       state.trashItems = state.trashItems.filter((trashItem) => !(trashItem.entity_type === entityType && trashItem.id === id));
+      if (entityType === 'finance') window.dispatchEvent(new CustomEvent('apollus-finance-refresh'));
       renderTrash();
       await loadActivities();
       renderOverview();
@@ -1355,6 +1374,8 @@ function activityEntity(entityType = '') {
     playlist: { icon: '▶', type: 'Playlist', className: 'playlist' },
     presave: { icon: '↓', type: 'Pré-save', className: 'presave' },
     settings: { icon: '⚙', type: 'Configurações', className: 'settings' },
+    finance: { icon: 'R$', type: 'Financeiro', className: 'finance' },
+    profile: { icon: '♙', type: 'Perfil', className: 'profile' },
   }[entityType] || { icon: '•', type: 'Item', className: 'item' };
 }
 
@@ -1417,6 +1438,12 @@ function historyFieldLabel(field = '') {
     presave_title: 'Pré-save — título', presave_text: 'Pré-save — descrição', presave_empty_title: 'Pré-save — mensagem vazia',
     release_type: 'Tipo de lançamento', release_date: 'Data de lançamento', release_time: 'Horário de lançamento',
     presave_url: 'Link de pré-save', release_url: 'Link após lançamento', instagram_url: 'Instagram do artista',
+    entry_type: 'Tipo financeiro', amount_total: 'Valor total', amount_paid: 'Valor pago / recebido', competence_date: 'Competência', due_date: 'Vencimento',
+    partner_name: 'Cliente / fornecedor', partner_document: 'CPF / CNPJ', payment_method: 'Forma de pagamento', project_id: 'Projeto relacionado', notes: 'Observações',
+    invoice_required: 'Exige nota fiscal', invoice_status: 'Status da nota', invoice_number: 'Número da NFS-e', invoice_issue_date: 'Data de emissão',
+    invoice_competence: 'Competência da nota', invoice_customer: 'Tomador', invoice_customer_document: 'CPF / CNPJ do tomador', invoice_service: 'Serviço prestado',
+    invoice_taxation_code: 'Código de Tributação Nacional', invoice_nbs_item: 'Item da NBS', invoice_city: 'Município emissor', invoice_amount: 'Valor da nota', invoice_document_url: 'Link da nota',
+    display_name: 'Nome do perfil', email: 'E-mail', role: 'Função', active: 'Perfil ativo', require_mfa: 'MFA obrigatório', permissions: 'Permissões',
   };
   return labels[field] || field.replaceAll('_', ' ').replace(/^./, (letter) => letter.toUpperCase());
 }

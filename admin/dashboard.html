@@ -12,7 +12,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&amp;family=Inter:wght@400;500;600;700;800&amp;family=Permanent+Marker&amp;display=swap" rel="stylesheet"/>
 <link href="admin.css" rel="stylesheet"/>
 </head>
-<body class="admin-dashboard-body" data-admin-page="dashboard">
+<body class="admin-dashboard-body" data-admin-page="dashboard" data-apollus-version="finance-access-v1">
 <div class="admin-boot" id="admin-loading">
 <span class="admin-spinner"></span>
 <p>Carregando painel...</p>
@@ -41,7 +41,7 @@
         </button><button class="admin-nav-item" data-admin-tab="presaves" type="button">
 <svg fill="none" stroke="currentColor" stroke-width="1.8" viewbox="0 0 24 24"><path d="M12 3v12"></path><path d="m7 10 5 5 5-5"></path><path d="M5 20h14"></path></svg>
       Pré-save
-    </button>
+    </button><button class="admin-nav-item" data-admin-tab="finance" data-requires-permission="finance.view" type="button"><svg fill="none" stroke="currentColor" stroke-width="1.8" viewbox="0 0 24 24"><rect height="14" rx="2" width="18" x="3" y="5"></rect><path d="M7 10h10M7 14h5"></path><circle cx="17" cy="14" r="1.5"></circle></svg> Financeiro</button>
 <button class="admin-nav-item" data-admin-tab="history" type="button">
 <svg fill="none" stroke="currentColor" stroke-width="1.8" viewbox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"></path><path d="M3 4v5h5M12 7v5l3 2"></path></svg>
           Histórico
@@ -50,7 +50,7 @@
 <svg fill="none" stroke="currentColor" stroke-width="1.8" viewbox="0 0 24 24"><path d="M4 7h16"></path><path d="M9 7V4h6v3"></path><path d="M7 7l1 13h8l1-13"></path><path d="M10 11v5M14 11v5"></path></svg>
           Lixeira
         </button>
-<button class="admin-nav-item" data-admin-tab="settings" type="button">
+<button class="admin-nav-item" data-admin-tab="access" data-owner-only="true" type="button"><svg fill="none" stroke="currentColor" stroke-width="1.8" viewbox="0 0 24 24"><circle cx="9" cy="8" r="3"></circle><path d="M3.5 20v-2.2A4.8 4.8 0 0 1 8.3 13h1.4a4.8 4.8 0 0 1 4.3 2.7"></path><path d="M16 11h5M18.5 8.5v5"></path></svg> Usuários e acessos</button><button class="admin-nav-item" data-admin-tab="security" type="button"><svg fill="none" stroke="currentColor" stroke-width="1.8" viewbox="0 0 24 24"><path d="M12 3 4.5 6v5.5c0 4.7 3.2 7.7 7.5 9.5 4.3-1.8 7.5-4.8 7.5-9.5V6z"></path><path d="m9 12 2 2 4-5"></path></svg> Segurança</button><button class="admin-nav-item" data-admin-tab="settings" type="button">
 <svg fill="none" stroke="currentColor" stroke-width="1.8" viewbox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1A1.7 1.7 0 0 0 9 4.6 1.7 1.7 0 0 0 10 3v-.2h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"></path></svg>
           Configurações
         </button>
@@ -91,6 +91,16 @@
 <article class="overview-stat blue-stat"><div><span>Datas disponíveis</span><strong id="overview-available-total">0</strong><small>Disponibilidade futura</small></div><span class="metric-icon">◷</span></article>
 <article class="overview-stat green-stat"><div><span>Playlists ativas</span><strong id="overview-playlist-total">0</strong><small>Curadoria publicada</small></div><span class="metric-icon">▶</span></article>
 <article class="overview-stat presave-stat"><div><span>Pré-saves ativos</span><strong id="overview-presave-total">0</strong><small>Campanhas publicadas</small></div><span class="metric-icon">↓</span></article></div>
+
+<section class="overview-finance-summary" data-requires-permission="finance.view" hidden="" id="overview-finance-summary">
+<header><div><p class="admin-kicker">Área protegida</p><h2>Resumo financeiro do mês</h2></div><button data-go-panel="finance" type="button">Abrir Financeiro →</button></header>
+<div class="overview-finance-cards">
+<article><span>Recebido</span><strong id="overview-finance-received">R$ 0,00</strong></article>
+<article><span>Despesas pagas</span><strong id="overview-finance-paid">R$ 0,00</strong></article>
+<article><span>Resultado realizado</span><strong id="overview-finance-profit">R$ 0,00</strong></article>
+<article><span>A receber</span><strong id="overview-finance-receivable">R$ 0,00</strong></article>
+</div>
+</section>
 <div class="overview-grid">
 <article class="dashboard-card commitments-card">
 <header class="dashboard-card-header"><h2>Próximos compromissos</h2><button data-go-panel="agenda" type="button">Ver agenda →</button></header>
@@ -202,7 +212,58 @@
 <div class="admin-list-state" id="presaves-admin-loading">Carregando pré-saves...</div>
 <div class="admin-list-state" hidden="" id="presaves-admin-empty">Nenhuma campanha cadastrada.</div>
 <div class="admin-list" id="presaves-admin-list"></div>
-</section><section class="admin-panel" data-panel="history" id="history-panel">
+</section>
+<section class="admin-panel finance-panel" data-panel="finance" data-requires-permission="finance.view" id="finance-panel">
+<div class="finance-hero">
+<div><p class="admin-kicker">Gestão protegida</p><h2>Visão geral financeira</h2><p>Receitas, despesas, parcelas, notas fiscais e resultados por projeto.</p></div>
+<div class="finance-hero-actions"><label><span class="sr-only">Mês financeiro</span><input id="finance-month" type="month"/></label><button class="admin-btn primary" data-requires-permission="finance.edit" id="finance-new-entry" type="button">+ Receita / despesa</button></div>
+</div>
+<div class="finance-lock" hidden="" id="finance-mfa-lock">
+<span class="finance-lock-icon">🔒</span><div><h3>Verificação em duas etapas necessária</h3><p>Os valores financeiros só são consultados após confirmar seu código do aplicativo autenticador.</p></div><button class="admin-btn primary" id="finance-unlock" type="button">Verificar segurança</button>
+</div>
+<div hidden="" id="finance-content">
+<nav aria-label="Navegação financeira" class="finance-subnav">
+<button class="active" data-finance-view="overview" type="button">Visão geral</button>
+<button data-finance-view="transactions" type="button">Receitas e despesas</button>
+<button data-finance-view="receivable" type="button">Contas a receber</button>
+<button data-finance-view="payable" type="button">Contas a pagar</button>
+<button data-finance-view="invoices" data-requires-permission="finance.invoice" type="button">Notas fiscais (MEI)</button>
+<button data-finance-view="reports" type="button">Relatório mensal</button>
+</nav>
+<section class="finance-view active" data-finance-section="overview" id="finance-overview-view">
+<div class="finance-kpis">
+<article class="finance-kpi revenue"><span>Receitas previstas</span><strong id="finance-kpi-revenue">R$ 0,00</strong><small id="finance-kpi-revenue-note">No mês selecionado</small></article>
+<article class="finance-kpi expense"><span>Despesas previstas</span><strong id="finance-kpi-expense">R$ 0,00</strong><small>No mês selecionado</small></article>
+<article class="finance-kpi profit"><span>Lucro previsto</span><strong id="finance-kpi-profit">R$ 0,00</strong><small>Receitas menos despesas</small></article>
+<article class="finance-kpi pending"><span>A receber</span><strong id="finance-kpi-receivable">R$ 0,00</strong><small id="finance-kpi-open-receivables">0 títulos em aberto</small></article>
+<article class="finance-kpi payable"><span>A pagar</span><strong id="finance-kpi-payable">R$ 0,00</strong><small id="finance-kpi-open-payables">0 títulos em aberto</small></article>
+<article class="finance-kpi realized"><span>Resultado realizado</span><strong id="finance-kpi-realized">R$ 0,00</strong><small>Recebimentos menos pagamentos</small></article>
+</div>
+<div class="finance-dashboard-grid">
+<article class="finance-card"><header><div><p class="admin-kicker">Últimos 6 meses</p><h3>Receitas x despesas</h3></div></header><div class="finance-chart" id="finance-chart"></div></article>
+<article class="finance-card"><header><div><p class="admin-kicker">Atenção</p><h3>Alertas financeiros</h3></div></header><div class="finance-alerts" id="finance-alerts"></div></article>
+<article class="finance-card"><header><div><p class="admin-kicker">Distribuição</p><h3>Despesas por categoria</h3></div></header><div class="finance-categories" id="finance-categories"></div></article>
+</div>
+<article class="finance-card finance-recent"><header><div><p class="admin-kicker">Movimentações</p><h3>Últimos lançamentos</h3></div><button data-finance-view-link="transactions" type="button">Ver todos →</button></header><div id="finance-recent-list"></div></article>
+</section>
+<section class="finance-view" data-finance-section="list" id="finance-list-view">
+<div class="finance-list-toolbar">
+<label class="search-field"><span class="sr-only">Buscar lançamento</span><input id="finance-search" placeholder="Buscar descrição, cliente, categoria ou projeto..." type="search"/></label>
+<select aria-label="Status financeiro" id="finance-status-filter"><option value="todos">Todos os status</option><option value="pendente">Pendente</option><option value="parcial">Parcial</option><option value="atrasado">Atrasado</option><option value="recebido">Recebido</option><option value="pago">Pago</option><option value="cancelado">Cancelado</option></select>
+<select aria-label="Categoria financeira" id="finance-category-filter"><option value="todos">Todas as categorias</option></select>
+<button class="admin-btn secondary" data-requires-permission="finance.export" id="finance-export-current" type="button">Exportar CSV</button>
+</div>
+<div class="finance-list-summary" id="finance-list-summary"></div>
+<div class="finance-table-wrap"><table class="finance-table"><thead><tr><th>Descrição</th><th>Tipo</th><th>Categoria</th><th>Vencimento</th><th>Total</th><th>Pago/recebido</th><th>Saldo</th><th>Status</th><th>NF</th><th>Projeto</th><th></th></tr></thead><tbody id="finance-entry-list"></tbody></table></div>
+<div class="admin-list-state" hidden="" id="finance-entry-empty">Nenhum lançamento encontrado.</div>
+</section>
+<section class="finance-view" data-finance-section="reports" id="finance-reports-view">
+<div class="finance-report-actions"><div><p class="admin-kicker">Fechamento</p><h3 id="finance-report-title">Relatório mensal</h3></div><div><button class="admin-btn secondary" data-requires-permission="finance.export" id="finance-report-csv" type="button">Exportar CSV</button><button class="admin-btn primary" id="finance-print-report" type="button">Imprimir / salvar PDF</button></div></div>
+<div class="finance-report-content" id="finance-report-content"></div>
+</section>
+</div>
+</section>
+<section class="admin-panel" data-panel="history" id="history-panel">
 <div class="history-heading-row">
 <div>
 <p class="admin-kicker">Auditoria interna</p>
@@ -222,7 +283,7 @@
 <option value="agenda">Agenda</option>
 <option value="playlist">Playlists</option>
 <option value="presave">Pré-saves</option><option value="settings">Configurações</option>
-</select>
+<option value="finance">Financeiro</option><option value="profile">Perfis e acessos</option></select>
 <select aria-label="Filtrar histórico por ação" id="history-action-filter">
 <option value="todos">Todas as ações</option>
 <option value="inserted">Criações</option>
@@ -266,7 +327,7 @@
 <option value="project">Projetos</option>
 <option value="agenda">Agenda</option>
 <option value="playlist">Playlists</option>
-<option value="presave">Pré-saves</option></select>
+<option value="presave">Pré-saves</option><option value="finance">Financeiro</option></select>
 <select aria-label="Filtrar lixeira por administrador" id="trash-actor-filter">
 <option value="todos">Toda a equipe</option>
 </select>
@@ -278,6 +339,22 @@
 <div class="admin-list-state" id="trash-admin-loading">Carregando lixeira...</div>
 <div class="admin-list-state" hidden="" id="trash-admin-empty">A lixeira está vazia.</div>
 <div class="trash-list" id="trash-admin-list"></div>
+</section>
+
+<section class="admin-panel access-panel" data-owner-only="true" data-panel="access" id="access-panel">
+<div class="access-heading"><div><p class="admin-kicker">Somente proprietário</p><h2>Usuários e acessos</h2><p>Adicione, edite, desative ou remova perfis e defina exatamente quais áreas cada pessoa pode acessar.</p></div><button class="admin-btn primary" id="access-new-profile" type="button">+ Adicionar perfil</button></div>
+<div class="owner-protection-notice"><span>♜</span><div><strong>Jallerson é o proprietário protegido</strong><p>Somente o perfil proprietário pode administrar usuários e permissões. Esse perfil não pode ser desativado ou removido.</p></div></div>
+<div class="access-profile-list" id="access-profile-list"></div>
+<div class="admin-list-state" hidden="" id="access-profile-empty">Nenhum perfil encontrado.</div>
+</section>
+
+<section class="admin-panel security-panel" data-panel="security" id="security-panel">
+<div class="security-heading"><div><p class="admin-kicker">Proteção da conta</p><h2>Segurança</h2><p>Gerencie a verificação em duas etapas e as sessões conectadas.</p></div><span class="security-badge" id="security-aal-badge">Verificando...</span></div>
+<div class="security-grid">
+<article class="security-card"><header><span>◈</span><div><h3>Aplicativo autenticador</h3><p>Protege o Financeiro com códigos temporários (TOTP).</p></div></header><div id="security-mfa-status"></div><div class="security-actions"><button class="admin-btn primary" id="security-enroll-mfa" type="button">Configurar autenticação</button><button class="admin-btn secondary" id="security-verify-mfa" type="button">Verificar código</button><button class="admin-btn danger" hidden="" id="security-remove-mfa" type="button">Remover autenticador</button></div></article>
+<article class="security-card"><header><span>↗</span><div><h3>Sessões</h3><p>Controle onde sua conta permanece conectada.</p></div></header><div class="security-session-info" id="security-session-info"></div><div class="security-actions vertical"><button class="admin-btn secondary" id="security-signout-others" type="button">Sair dos outros dispositivos</button><button class="admin-btn danger" id="security-signout-all" type="button">Sair de todos os dispositivos</button></div></article>
+</div>
+<div class="security-note"><strong>Proteção no banco:</strong> mesmo que alguém tente consultar a API diretamente, o Supabase recusa os dados financeiros sem permissão e, quando exigido, sem uma sessão verificada em AAL2.</div>
 </section>
 <section class="admin-panel" data-panel="settings" id="settings-panel">
 <div class="settings-heading-row">
@@ -422,6 +499,11 @@
 <label><span>Resumo</span><textarea id="project-summary" maxlength="320" placeholder="Texto curto que aparece no card." rows="3"></textarea></label>
 <label><span>Descrição completa</span><textarea id="project-description" placeholder="Conte a história e os detalhes do projeto." rows="7"></textarea></label>
 <label><span>Ficha técnica / créditos</span><textarea id="project-credits" placeholder="Produção, equipe, artistas, parceiros..." rows="5"></textarea></label>
+<section class="project-finance-summary" data-requires-permission="finance.view" hidden="" id="project-finance-summary">
+<header><div><span>Financeiro do projeto</span><h3 id="project-finance-title">Resumo financeiro</h3></div><button class="mini-action" id="project-finance-open" type="button">Abrir Financeiro</button></header>
+<div class="project-finance-metrics"><div><span>Receitas</span><strong id="project-finance-revenue">R$ 0,00</strong></div><div><span>Recebido</span><strong id="project-finance-received">R$ 0,00</strong></div><div><span>Despesas</span><strong id="project-finance-expense">R$ 0,00</strong></div><div><span>Resultado</span><strong id="project-finance-result">R$ 0,00</strong></div></div>
+</section>
+
 <div class="form-grid two-columns">
 <label><span>Vídeo (YouTube ou Vimeo)</span><input id="project-video-url" placeholder="https://..." type="url"/></label>
 <label><span>Link externo</span><input id="project-external-url" placeholder="Spotify, Instagram, site..." type="url"/></label>
@@ -571,6 +653,33 @@
 <p aria-live="polite" class="form-message" id="agenda-form-message"></p>
 </form>
 </dialog>
+
+<dialog class="admin-dialog" id="finance-entry-dialog">
+<form class="admin-dialog-card finance-entry-form" id="finance-entry-form">
+<header class="dialog-header"><div><p class="admin-kicker">Controle financeiro</p><h2 id="finance-entry-dialog-title">Novo lançamento</h2></div><button aria-label="Fechar" class="dialog-close" data-admin-close="" type="button">×</button></header>
+<input id="finance-entry-id" type="hidden"/>
+<div class="form-grid two-columns">
+<label><span>Tipo *</span><select id="finance-entry-type" required=""><option value="receita">Receita / conta a receber</option><option value="despesa">Despesa / conta a pagar</option></select></label>
+<label><span>Categoria *</span><select id="finance-entry-category" required=""></select></label>
+<label class="form-wide"><span>Descrição *</span><input id="finance-entry-description" maxlength="180" placeholder="Ex.: Produção musical — Artista" required="" type="text"/></label>
+<label><span>Valor total *</span><input id="finance-entry-amount" min="0.01" required="" step="0.01" type="number"/></label>
+<label><span>Competência *</span><input id="finance-entry-competence" required="" type="date"/></label>
+<label><span>Primeiro vencimento *</span><input id="finance-entry-due" required="" type="date"/></label>
+<label><span>Cliente / fornecedor</span><input id="finance-entry-partner" maxlength="160" type="text"/></label>
+<label><span>CPF / CNPJ</span><input id="finance-entry-document" maxlength="30" type="text"/></label>
+<label><span>Projeto relacionado</span><select id="finance-entry-project"><option value="">Nenhum projeto</option></select></label>
+<label><span>Forma prevista de pagamento</span><input id="finance-entry-method" maxlength="80" placeholder="PIX, transferência, dinheiro..." type="text"/></label>
+<label><span>Quantidade de parcelas</span><input id="finance-entry-installments" max="120" min="1" type="number" value="1"/></label>
+<label><span>Intervalo entre parcelas</span><select id="finance-entry-interval"><option value="0">Mesmo vencimento</option><option selected="" value="1">Mensal</option><option value="2">A cada 2 meses</option><option value="3">Trimestral</option></select></label>
+</div>
+<label><span>Observações</span><textarea id="finance-entry-notes" rows="3"></textarea></label>
+<section class="invoice-form-section" data-requires-permission="finance.invoice"><label class="settings-toggle"><input id="finance-invoice-required" type="checkbox"/><span><strong>Controlar emissão de Nota Fiscal / MEI</strong><small>Guarda somente os dados e links; não ocupa espaço com PDF ou XML.</small></span></label><div hidden="" id="finance-invoice-fields"><div class="form-grid two-columns"><label><span>Status da nota</span><select id="finance-invoice-status"><option value="pendente">Pendente de emissão</option><option value="emitida">Emitida</option><option value="cancelada">Cancelada</option><option value="substituida">Substituída</option><option value="nao_necessaria">Não necessária</option></select></label><label><span>Número da NFS-e</span><input id="finance-invoice-number" maxlength="80" type="text"/></label><label><span>Data de emissão</span><input id="finance-invoice-issue-date" type="date"/></label><label><span>Competência da nota</span><input id="finance-invoice-competence" type="date"/></label><label><span>Tomador</span><input id="finance-invoice-customer" maxlength="160" type="text"/></label><label><span>CPF / CNPJ do tomador</span><input id="finance-invoice-customer-document" maxlength="30" type="text"/></label><label class="form-wide"><span>Serviço prestado</span><textarea id="finance-invoice-service" rows="3"></textarea></label><label><span>Código de Tributação Nacional</span><input id="finance-invoice-tax-code" maxlength="120" type="text"/></label><label><span>Item da NBS</span><input id="finance-invoice-nbs" maxlength="120" type="text"/></label><label><span>Município emissor</span><input id="finance-invoice-city" maxlength="100" type="text" value="Curitiba-PR"/></label><label><span>Valor da nota</span><input id="finance-invoice-amount" min="0" step="0.01" type="number"/></label><label class="form-wide"><span>Link do PDF / XML</span><input id="finance-invoice-url" placeholder="https://..." type="url"/></label></div></div></section>
+<section class="finance-installments-section" hidden="" id="finance-installments-section"><header><div><p class="admin-kicker">Parcelas e pagamentos</p><h3>Controle de recebimentos e pagamentos</h3></div></header><div id="finance-installments-list"></div></section>
+<footer class="dialog-actions"><button class="admin-btn secondary" data-admin-close="" type="button">Cancelar</button><button class="admin-btn danger" data-requires-permission="finance.delete" hidden="" id="finance-entry-delete" type="button">Mover para lixeira</button><button class="admin-btn primary" id="finance-entry-save" type="submit">Salvar lançamento</button></footer>
+<p aria-live="polite" class="form-message" id="finance-entry-message"></p>
+</form></dialog>
+<dialog class="admin-dialog" id="finance-payment-dialog"><form class="admin-dialog-card compact" id="finance-payment-form"><header class="dialog-header"><div><p class="admin-kicker">Pagamento parcial</p><h2 id="finance-payment-title">Registrar pagamento</h2></div><button aria-label="Fechar" class="dialog-close" data-admin-close="" type="button">×</button></header><input id="finance-payment-installment-id" type="hidden"/><div class="payment-balance" id="finance-payment-balance"></div><div class="form-grid two-columns"><label><span>Valor *</span><input id="finance-payment-amount" min="0.01" required="" step="0.01" type="number"/></label><label><span>Data *</span><input id="finance-payment-date" required="" type="date"/></label><label><span>Forma de pagamento</span><input id="finance-payment-method" maxlength="80" type="text"/></label></div><label><span>Observação</span><textarea id="finance-payment-notes" rows="3"></textarea></label><footer class="dialog-actions"><button class="admin-btn secondary" data-admin-close="" type="button">Cancelar</button><button class="admin-btn primary" type="submit">Registrar</button></footer><p class="form-message" id="finance-payment-message"></p></form></dialog>
+<dialog class="admin-dialog" id="access-profile-dialog"><form class="admin-dialog-card access-profile-form" id="access-profile-form"><header class="dialog-header"><div><p class="admin-kicker">Controle exclusivo do proprietário</p><h2 id="access-profile-title">Adicionar perfil</h2></div><button aria-label="Fechar" class="dialog-close" data-admin-close="" type="button">×</button></header><input id="access-profile-user-id" type="hidden"/><div class="form-grid two-columns"><label><span>Nome *</span><input id="access-profile-name" maxlength="120" required="" type="text"/></label><label><span>E-mail *</span><input id="access-profile-email" maxlength="220" required="" type="email"/></label><label><span>Perfil-base</span><select id="access-profile-role"><option value="admin">Administrador</option><option value="editor">Editor</option><option value="finance">Financeiro</option><option value="custom">Personalizado</option></select></label></div><div class="access-profile-switches"><label class="settings-toggle"><input checked="" id="access-profile-active" type="checkbox"/><span><strong>Perfil ativo</strong><small>Permite entrar no painel.</small></span></label><label class="settings-toggle"><input id="access-profile-require-mfa" type="checkbox"/><span><strong>Exigir autenticação em duas etapas</strong><small>É ativada automaticamente ao conceder acesso financeiro.</small></span></label></div><section class="permissions-editor"><header><div><p class="admin-kicker">Permissões individuais</p><h3>O que essa pessoa pode fazer?</h3></div><button class="mini-action" id="access-permissions-clear" type="button">Limpar seleção</button></header><div class="access-permissions-grid" id="access-permissions-grid"></div></section><footer class="dialog-actions"><button class="admin-btn secondary" data-admin-close="" type="button">Cancelar</button><button class="admin-btn primary" id="access-profile-save" type="submit">Salvar perfil</button></footer><p class="form-message" id="access-profile-message"></p></form></dialog>
 <dialog class="admin-dialog history-detail-dialog" id="history-detail-dialog">
 <div class="admin-dialog-card compact">
 <header class="dialog-header">
@@ -593,6 +702,6 @@
 <footer class="dialog-actions"><button class="admin-btn secondary" data-admin-close="" type="button">Cancelar</button><button class="admin-btn danger" id="confirm-action" type="button">Excluir</button></footer>
 </div>
 </dialog>
-<script src="admin.js" type="module"></script>
+<script src="admin.js" type="module"></script><script src="finance.js" type="module"></script>
 </body>
 </html>
