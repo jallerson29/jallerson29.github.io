@@ -1,7 +1,6 @@
 import { supabase, isSupabaseConfigured } from '../supabase-config.js';
 
 const OWNER_ID = 'e4028402-dced-4131-a468-0ee86baf7d49';
-const MANAGE_USER_FUNCTION = 'manage-admin-user';
 
 const PERMISSION_GROUPS = [
   { key: 'projects', label: 'Projetos', permissions: [['projects.view', 'Visualizar'], ['projects.edit', 'Criar e editar'], ['projects.delete', 'Excluir']] },
@@ -9,12 +8,12 @@ const PERMISSION_GROUPS = [
   { key: 'playlists', label: 'Playlists', permissions: [['playlists.view', 'Visualizar'], ['playlists.edit', 'Criar e editar'], ['playlists.delete', 'Excluir']] },
   { key: 'presaves', label: 'Pré-save', permissions: [['presaves.view', 'Visualizar'], ['presaves.edit', 'Criar e editar'], ['presaves.delete', 'Excluir']] },
   { key: 'finance', label: 'Financeiro', permissions: [['finance.view', 'Visualizar valores'], ['finance.edit', 'Criar e editar'], ['finance.invoice', 'Controlar notas'], ['finance.export', 'Exportar relatórios'], ['finance.delete', 'Excluir']] },
-  { key: 'management', label: 'Gestão do painel', permissions: [['history.view', 'Ver histórico'], ['trash.view', 'Ver lixeira'], ['trash.restore', 'Restaurar itens'], ['trash.delete', 'Excluir definitivamente'], ['settings.view', 'Ver configurações'], ['settings.edit', 'Editar configurações'], ['users.manage', 'Administrar usuários']] },
+  { key: 'management', label: 'Gestão do painel', permissions: [['history.view', 'Ver histórico'], ['trash.view', 'Ver lixeira'], ['trash.restore', 'Restaurar itens'], ['trash.delete', 'Excluir definitivamente'], ['settings.view', 'Ver configurações'], ['settings.edit', 'Editar configurações']] },
 ];
 
 const ALL_PERMISSIONS = PERMISSION_GROUPS.flatMap((group) => group.permissions.map(([key]) => key));
 const ROLE_TEMPLATES = {
-  admin: ALL_PERMISSIONS.filter((key) => !key.startsWith('finance.') && key !== 'users.manage'),
+  admin: ALL_PERMISSIONS.filter((key) => !key.startsWith('finance.')),
   editor: [
     'projects.view', 'projects.edit', 'agenda.view', 'agenda.edit',
     'playlists.view', 'playlists.edit', 'presaves.view', 'presaves.edit',
@@ -904,7 +903,7 @@ function renderProfiles() {
       const allowed = group.permissions.some(([key]) => permissions.has(key)) || profile.role === 'owner';
       return `<span class="access-module-chip ${allowed ? 'allowed' : 'blocked'}">${escapeHtml(group.label)} ${allowed ? '✓' : '🔒'}</span>`;
     }).join('');
-    return `<article class="access-profile-card ${profile.active ? '' : 'inactive'}"><header><div class="access-avatar">${escapeHtml((profile.display_name || '?').slice(0, 1).toUpperCase())}</div><div><h3>${escapeHtml(profile.display_name)}</h3><p>${escapeHtml(profile.email)}</p></div><span class="access-role ${escapeHtml(profile.role)}">${escapeHtml(roleLabel(profile.role))}</span></header><div class="access-status-row"><span class="${profile.active ? 'active' : 'inactive'}">${profile.active ? '● Acesso ativo' : '○ Acesso desativado'}</span><span>${profile.require_mfa ? '🔒 MFA obrigatório' : 'MFA opcional'}</span></div><div class="access-module-list">${moduleStatus}</div><footer><button type="button" class="admin-btn secondary" data-profile-edit="${escapeHtml(profile.user_id)}">Editar acessos</button>${profile.user_id !== OWNER_ID ? `<button type="button" class="admin-btn ${profile.active ? 'danger' : 'restore'}" data-profile-toggle="${escapeHtml(profile.user_id)}">${profile.active ? 'Desativar' : 'Reativar'}</button><button type="button" class="icon-button delete" data-profile-delete="${escapeHtml(profile.user_id)}" title="Excluir conta de autenticação">${profile.active ? '×' : '⌫'}</button>` : '<span class="owner-lock">Perfil protegido</span>'}</footer></article>`;
+    return `<article class="access-profile-card ${profile.active ? '' : 'inactive'}"><header><div class="access-avatar">${escapeHtml((profile.display_name || '?').slice(0, 1).toUpperCase())}</div><div><h3>${escapeHtml(profile.display_name)}</h3><p>${escapeHtml(profile.email)}</p></div><span class="access-role ${escapeHtml(profile.role)}">${escapeHtml(roleLabel(profile.role))}</span></header><div class="access-status-row"><span class="${profile.active ? 'active' : 'inactive'}">${profile.active ? '● Acesso ativo' : '○ Acesso desativado'}</span><span>${profile.require_mfa ? '🔒 MFA obrigatório' : 'MFA opcional'}</span></div><div class="access-module-list">${moduleStatus}</div><footer><button type="button" class="admin-btn secondary" data-profile-edit="${escapeHtml(profile.user_id)}">Editar acessos</button>${profile.user_id !== OWNER_ID ? `<button type="button" class="admin-btn ${profile.active ? 'danger' : 'restore'}" data-profile-toggle="${escapeHtml(profile.user_id)}">${profile.active ? 'Desativar' : 'Reativar'}</button><button type="button" class="admin-btn danger" data-profile-delete="${escapeHtml(profile.user_id)}" title="Remover acesso ao painel">Remover acesso</button>` : '<span class="owner-lock">Perfil protegido</span>'}</footer></article>`;
   }).join('');
   list.querySelectorAll('[data-profile-edit]').forEach((button) => button.addEventListener('click', () => openProfileForm(button.dataset.profileEdit)));
   list.querySelectorAll('[data-profile-toggle]').forEach((button) => button.addEventListener('click', () => toggleProfile(button.dataset.profileToggle)));
@@ -939,7 +938,9 @@ function openProfileForm(userId = '') {
   const profile = financeState.profiles.find((item) => item.user_id === userId);
   el('access-profile-form').reset();
   el('access-profile-user-id').value = profile?.user_id || '';
-  el('access-profile-title').textContent = profile ? 'Editar perfil e acessos' : 'Adicionar perfil';
+  el('access-profile-auth-user-id').value = profile?.user_id || '';
+  el('access-profile-auth-user-id').readOnly = Boolean(profile);
+  el('access-profile-title').textContent = profile ? 'Editar perfil e acessos' : 'Vincular usuário existente';
   el('access-profile-name').value = profile?.display_name || '';
   el('access-profile-email').value = profile?.email || '';
   el('access-profile-role').value = profile?.role === 'owner' ? 'custom' : profile?.role || 'editor';
@@ -948,6 +949,7 @@ function openProfileForm(userId = '') {
   const selected = profile ? profilePermissionSet(profile.user_id) : new Set(ROLE_TEMPLATES.editor);
   renderPermissionEditor(profile?.role === 'owner' ? new Set(ALL_PERMISSIONS) : selected);
   const locked = profile?.user_id === OWNER_ID;
+  el('access-profile-auth-user-id').disabled = locked;
   el('access-profile-email').disabled = locked;
   el('access-profile-role').disabled = locked;
   el('access-profile-active').disabled = locked;
@@ -957,65 +959,82 @@ function openProfileForm(userId = '') {
   el('access-profile-dialog').showModal();
 }
 
-async function invokeManageProfile(payload) {
+async function ensureOwnerMfa() {
   if (!isOwner()) throw new Error('Somente o proprietário pode administrar perfis.');
   await refreshMfaState();
   if (financeState.mfa.currentLevel !== 'aal2') {
     const verified = await verifyExistingMfa();
     if (!verified) throw new Error('Confirme a autenticação em duas etapas para continuar.');
   }
-  const { data, error } = await supabase.functions.invoke(MANAGE_USER_FUNCTION, { body: payload });
-  if (error) throw new Error(error.message || 'A Edge Function não respondeu.');
-  if (data?.error) throw new Error(data.error);
-  return data;
+}
+
+async function saveAdminProfileDirect(profile, permissions) {
+  await ensureOwnerMfa();
+  const { error } = await supabase.rpc('owner_save_admin_profile', {
+    target_user_id: profile.user_id,
+    target_display_name: profile.display_name,
+    target_email: profile.email,
+    target_role: profile.role,
+    target_active: profile.active,
+    target_require_mfa: profile.require_mfa,
+    target_permissions: permissions,
+  });
+  if (error) throw new Error(error.message || 'Não foi possível salvar o perfil.');
 }
 
 async function saveProfile(event) {
   event.preventDefault();
   if (!isOwner()) return;
-  const userId = el('access-profile-user-id').value;
+  const editingUserId = el('access-profile-user-id').value;
+  const authUserId = (editingUserId || el('access-profile-auth-user-id').value).trim();
   const permissions = [...el('access-permissions-grid').querySelectorAll('input:checked')].map((input) => input.value);
-  const payload = {
-    action: userId ? 'update' : 'invite', user_id: userId || undefined,
-    display_name: el('access-profile-name').value.trim(), email: el('access-profile-email').value.trim(),
-    role: el('access-profile-role').value, active: el('access-profile-active').checked,
-    require_mfa: el('access-profile-require-mfa').checked, permissions,
+  const profile = {
+    user_id: authUserId,
+    display_name: el('access-profile-name').value.trim(),
+    email: el('access-profile-email').value.trim(),
+    role: el('access-profile-role').value,
+    active: el('access-profile-active').checked,
+    require_mfa: el('access-profile-require-mfa').checked,
   };
   const button = el('access-profile-save');
-  setButtonLoading(button, true, userId ? 'Salvando...' : 'Enviando convite...');
+  setButtonLoading(button, true, editingUserId ? 'Salvando...' : 'Vinculando...');
   setFormMessage(el('access-profile-message'));
   try {
-    await invokeManageProfile(payload);
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(authUserId)) {
+      throw new Error('Cole o UID completo do usuário criado em Authentication → Users.');
+    }
+    await saveAdminProfileDirect(profile, permissions);
     el('access-profile-dialog').close();
     await loadProfiles();
-    notify(userId ? 'Perfil atualizado.' : 'Convite enviado e perfil criado.', 'success');
+    notify(editingUserId ? 'Perfil e permissões atualizados.' : 'Usuário vinculado ao painel com sucesso.', 'success');
   } catch (error) {
     console.error(error);
-    setFormMessage(el('access-profile-message'), `${error.message} Publique a função ${MANAGE_USER_FUNCTION} conforme o README.`, 'error');
+    setFormMessage(el('access-profile-message'), error.message || 'Não foi possível salvar o perfil.', 'error');
   } finally { setButtonLoading(button, false); }
 }
 
 async function toggleProfile(userId) {
   const profile = financeState.profiles.find((item) => item.user_id === userId);
   if (!profile || userId === OWNER_ID) return;
-  const action = profile.active ? 'deactivate' : 'activate';
   if (!window.confirm(`${profile.active ? 'Desativar' : 'Reativar'} o acesso de ${profile.display_name}?`)) return;
   try {
-    await invokeManageProfile({ action, user_id: userId, display_name: profile.display_name, email: profile.email });
+    await saveAdminProfileDirect({ ...profile, active: !profile.active }, [...profilePermissionSet(userId)]);
     await loadProfiles();
-    notify(profile.active ? 'Perfil desativado.' : 'Perfil reativado.', 'success');
+    notify(profile.active ? 'Acesso ao painel desativado.' : 'Acesso ao painel reativado.', 'success');
   } catch (error) { notify(error.message, 'error'); }
 }
 
 async function deleteProfile(userId) {
   const profile = financeState.profiles.find((item) => item.user_id === userId);
   if (!profile || userId === OWNER_ID) return;
-  const confirmation = window.prompt(`Para excluir definitivamente a conta de ${profile.display_name}, digite EXCLUIR.`);
-  if (confirmation !== 'EXCLUIR') return;
+  const confirmation = window.prompt(`Para remover ${profile.display_name} do painel Apollus, digite REMOVER. A conta de login continuará existindo no Supabase.`);
+  if (confirmation !== 'REMOVER') return;
   try {
-    await invokeManageProfile({ action: 'delete', user_id: userId, display_name: profile.display_name, email: profile.email });
+    await ensureOwnerMfa();
+    const { error } = await supabase.rpc('owner_remove_admin_profile', { target_user_id: userId });
+    if (error) throw new Error(error.message || 'Não foi possível remover o acesso.');
     await loadProfiles();
-    notify('Conta de autenticação excluída.', 'success');
+    notify('Acesso administrativo removido. A conta Auth não foi excluída.', 'success');
   } catch (error) { notify(error.message, 'error'); }
 }
 
