@@ -1,0 +1,1 @@
+NFS-e V2 UI Clean: nenhum SQL novo é necessário. Esta atualização é somente frontend/interface.

@@ -746,27 +746,31 @@ function applyApollusRolePreset() {
   const role = el('finance-invoice-role')?.value || 'nenhum';
   const apollus = getApollusParty();
   const note = el('finance-invoice-role-note');
-  if (!note) return;
   if (apollus) {
     ['finance-invoice-provider', 'finance-invoice-customer', 'finance-invoice-intermediary'].forEach((selectId) => {
       if (el(selectId)?.value === apollus.id) el(selectId).value = '';
     });
   }
   if (role === 'nenhum') {
-    note.textContent = 'A Apollus não será vinculada automaticamente a nenhum participante desta nota.';
+    if (note) note.textContent = 'A Apollus não será vinculada automaticamente a nenhum participante desta nota.';
+    updateInvoiceSummary();
     return;
   }
   const targetId = invoiceRoleTargetSelect(role);
   if (apollus && targetId && el(targetId)) el(targetId).value = apollus.id;
-  note.textContent = apollus
-    ? `Apollus definida como ${apollusRoleLabel(role)}. Os outros participantes continuam independentes.`
-    : 'Cadastre a entidade fiscal da Apollus para preencher este papel automaticamente.';
+  if (note) {
+    note.textContent = apollus
+      ? `Apollus definida como ${apollusRoleLabel(role)}. Os outros participantes continuam independentes.`
+      : 'Cadastre a entidade fiscal da Apollus para preencher este papel automaticamente.';
+  }
+  updateInvoiceSummary();
 }
 
 function applyInvoiceDirectionPreset() {
   const direction = el('finance-invoice-direction')?.value || 'emitida';
   const suggestedRole = { emitida: 'prestador', recebida: 'tomador', intermediada: 'intermediario' }[direction] || 'nenhum';
   if (el('finance-invoice-role')) el('finance-invoice-role').value = suggestedRole;
+  syncInvoiceDirectionChoices();
   applyApollusRolePreset();
 }
 
@@ -777,6 +781,94 @@ function setInvoiceDriveLink(url = '') {
   link.hidden = !safe;
   if (safe) link.href = safe;
   else link.removeAttribute('href');
+  updateInvoiceSummary();
+}
+
+
+function syncInvoiceDirectionChoices() {
+  const direction = el('finance-invoice-direction')?.value || 'emitida';
+  document.querySelectorAll('input[name="finance-invoice-direction-choice"]').forEach((radio) => {
+    radio.checked = radio.value === direction;
+  });
+}
+
+function setInvoiceTab(tab = 'identification') {
+  const allowed = new Set(['identification', 'parties', 'service', 'values']);
+  const next = allowed.has(tab) ? tab : 'identification';
+  document.querySelectorAll('[data-invoice-tab]').forEach((button) => {
+    const active = button.dataset.invoiceTab === next;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-selected', active ? 'true' : 'false');
+  });
+  document.querySelectorAll('[data-invoice-panel]').forEach((panel) => {
+    const active = panel.dataset.invoicePanel === next;
+    panel.hidden = !active;
+    panel.classList.toggle('active', active);
+  });
+}
+
+function updateInvoiceSummary() {
+  const summary = el('finance-invoice-summary-card');
+  if (!summary) return;
+  const enabled = Boolean(el('finance-invoice-required')?.checked);
+  summary.hidden = !enabled;
+  if (!enabled) return;
+
+  const direction = el('finance-invoice-direction')?.value || 'emitida';
+  const status = el('finance-invoice-status')?.value || 'pendente';
+  const role = el('finance-invoice-role')?.value || 'nenhum';
+  const number = el('finance-invoice-number')?.value.trim() || '';
+  const competence = el('finance-invoice-competence')?.value || '';
+  const provider = getParty(el('finance-invoice-provider')?.value);
+  const customer = getParty(el('finance-invoice-customer')?.value);
+  const intermediary = getParty(el('finance-invoice-intermediary')?.value);
+
+  const directionBadge = el('finance-invoice-summary-direction');
+  if (directionBadge) {
+    directionBadge.textContent = invoiceDirectionLabel(direction);
+    directionBadge.className = `invoice-summary-badge ${direction}`;
+  }
+
+  const statusBadge = el('finance-invoice-summary-status');
+  if (statusBadge) {
+    statusBadge.textContent = invoiceLabel(status);
+    statusBadge.className = `invoice-summary-status ${status}`;
+  }
+
+  const title = el('finance-invoice-summary-title');
+  if (title) title.textContent = number ? `NFS-e ${number}` : 'NFS-e ainda sem número';
+
+  const partyBits = [
+    `Prestador: ${provider ? partyDisplayName(provider) : 'não informado'}`,
+    `Tomador: ${customer ? partyDisplayName(customer) : 'não informado'}`,
+  ];
+  if (intermediary) partyBits.push(`Intermediário: ${partyDisplayName(intermediary)}`);
+  const parties = el('finance-invoice-summary-parties');
+  if (parties) parties.textContent = partyBits.join(' • ');
+
+  const metaBits = [];
+  if (competence) metaBits.push(`Competência ${formatDate(competence)}`);
+  if (role !== 'nenhum') metaBits.push(`Apollus como ${apollusRoleLabel(role)}`);
+  const meta = el('finance-invoice-summary-meta');
+  if (meta) meta.textContent = metaBits.length ? metaBits.join(' • ') : 'Abra os dados fiscais para completar a nota.';
+}
+
+function openInvoiceDialog(tab = 'identification') {
+  if (!el('finance-invoice-required')?.checked) return;
+  const dialog = el('finance-invoice-dialog');
+  if (!dialog) return;
+  el('finance-invoice-fields').hidden = false;
+  syncInvoiceDirectionChoices();
+  setInvoiceTab(tab);
+  updateInvoiceSummary();
+  if (!dialog.open) dialog.showModal();
+}
+
+function closeInvoiceDialog() {
+  closePartyEditor();
+  updateInvoiceSummary();
+  const dialog = el('finance-invoice-dialog');
+  if (dialog?.open) dialog.close();
 }
 
 function closePartyEditor() {
@@ -849,6 +941,7 @@ async function saveFiscalParty() {
     await refreshFiscalParties(result.data.id, returnSelectId);
     closePartyEditor();
     if (returnSelectId && el(returnSelectId)) el(returnSelectId).value = result.data.id;
+    updateInvoiceSummary();
     notify('Cadastro fiscal salvo.', 'success');
   } catch (error) {
     console.error(error);
@@ -946,9 +1039,13 @@ function resetFinanceEntryForm() {
   el('finance-invoice-deductions').value = '0';
   el('finance-invoice-iss').value = '0';
   populatePartySelects();
+  syncInvoiceDirectionChoices();
   applyApollusRolePreset();
   setInvoiceDriveLink('');
+  setInvoiceTab('identification');
   el('finance-invoice-fields').hidden = true;
+  if (el('finance-invoice-summary-card')) el('finance-invoice-summary-card').hidden = true;
+  if (el('finance-invoice-dialog')?.open) el('finance-invoice-dialog').close();
   el('finance-installments-section').hidden = true;
   el('finance-entry-delete').hidden = true;
   el('finance-entry-installments').disabled = false;
@@ -1007,7 +1104,11 @@ function openFinanceEntry(id = '') {
       el('finance-invoice-url').value = invoice.drive_url || '';
       el('finance-invoice-notes').value = invoice.notes || '';
       setInvoiceDriveLink(invoice.drive_url || '');
+      syncInvoiceDirectionChoices();
       applyApollusRolePreset();
+      updateInvoiceSummary();
+    } else {
+      updateInvoiceSummary();
     }
     el('finance-entry-delete').hidden = !hasPermission('finance.delete');
     renderInstallments(entry);
@@ -1370,23 +1471,80 @@ function setupDashboardModuleEvents() {
     if (!el('finance-invoice-required').checked && invoiceForEntry(existingEntry)) {
       el('finance-invoice-required').checked = true;
       el('finance-invoice-fields').hidden = false;
+      updateInvoiceSummary();
       notify('NFS-e já registrada: para preservar o histórico, altere o status para Cancelada em vez de remover.', 'error');
       return;
     }
+
     const enabled = el('finance-invoice-required').checked;
     el('finance-invoice-fields').hidden = !enabled;
-    if (enabled) {
-      if (!el('finance-invoice-amount').value) el('finance-invoice-amount').value = el('finance-entry-amount').value || '';
-      if (!el('finance-invoice-net').value) el('finance-invoice-net').value = el('finance-entry-amount').value || '';
-      if (!el('finance-invoice-competence').value) el('finance-invoice-competence').value = el('finance-entry-competence').value || todayIso();
-      applyInvoiceDirectionPreset();
+    if (!enabled) {
+      if (el('finance-invoice-dialog')?.open) closeInvoiceDialog();
+      updateInvoiceSummary();
+      return;
     }
+
+    if (!el('finance-invoice-amount').value) el('finance-invoice-amount').value = el('finance-entry-amount').value || '';
+    if (!el('finance-invoice-net').value) el('finance-invoice-net').value = el('finance-entry-amount').value || '';
+    if (!el('finance-invoice-competence').value) el('finance-invoice-competence').value = el('finance-entry-competence').value || todayIso();
+    applyInvoiceDirectionPreset();
+    updateInvoiceSummary();
+    openInvoiceDialog('identification');
   });
-  el('finance-invoice-direction')?.addEventListener('change', applyInvoiceDirectionPreset);
+
+  el('finance-invoice-open')?.addEventListener('click', () => openInvoiceDialog('identification'));
+  el('finance-invoice-dialog-close')?.addEventListener('click', closeInvoiceDialog);
+  el('finance-invoice-done')?.addEventListener('click', closeInvoiceDialog);
+  document.querySelectorAll('[data-invoice-tab]').forEach((button) => button.addEventListener('click', () => setInvoiceTab(button.dataset.invoiceTab)));
+
+  document.querySelectorAll('input[name="finance-invoice-direction-choice"]').forEach((radio) => {
+    radio.addEventListener('change', () => {
+      if (!radio.checked) return;
+      el('finance-invoice-direction').value = radio.value;
+      applyInvoiceDirectionPreset();
+      updateInvoiceSummary();
+    });
+  });
+
+  el('finance-invoice-direction')?.addEventListener('change', () => {
+    syncInvoiceDirectionChoices();
+    applyInvoiceDirectionPreset();
+    updateInvoiceSummary();
+  });
   el('finance-invoice-role')?.addEventListener('change', applyApollusRolePreset);
   el('finance-invoice-url')?.addEventListener('input', (event) => setInvoiceDriveLink(event.target.value.trim()));
-  el('finance-party-new')?.addEventListener('click', () => openPartyEditor());
+
+  [
+    'finance-invoice-status', 'finance-invoice-number', 'finance-invoice-issue-date',
+    'finance-invoice-competence', 'finance-invoice-dps-series', 'finance-invoice-dps-number',
+    'finance-invoice-provider', 'finance-invoice-customer', 'finance-invoice-intermediary',
+    'finance-invoice-service', 'finance-invoice-tax-code', 'finance-invoice-nbs',
+    'finance-invoice-city', 'finance-invoice-state', 'finance-invoice-amount',
+    'finance-invoice-deductions', 'finance-invoice-iss', 'finance-invoice-net',
+    'finance-invoice-notes',
+  ].forEach((id) => {
+    el(id)?.addEventListener('input', updateInvoiceSummary);
+    el(id)?.addEventListener('change', updateInvoiceSummary);
+  });
+
+  el('finance-entry-amount')?.addEventListener('input', () => {
+    if (!el('finance-invoice-required')?.checked) return;
+    if (!el('finance-invoice-amount').value) el('finance-invoice-amount').value = el('finance-entry-amount').value || '';
+    if (!el('finance-invoice-net').value) el('finance-invoice-net').value = el('finance-entry-amount').value || '';
+    updateInvoiceSummary();
+  });
+  el('finance-entry-competence')?.addEventListener('change', () => {
+    if (!el('finance-invoice-required')?.checked) return;
+    if (!el('finance-invoice-competence').value) el('finance-invoice-competence').value = el('finance-entry-competence').value || todayIso();
+    updateInvoiceSummary();
+  });
+
+  el('finance-party-new')?.addEventListener('click', () => {
+    setInvoiceTab('parties');
+    openPartyEditor();
+  });
   document.querySelectorAll('[data-party-edit-from]').forEach((button) => button.addEventListener('click', () => {
+    setInvoiceTab('parties');
     const selectId = button.dataset.partyEditFrom;
     const partyId = el(selectId)?.value || '';
     if (!partyId) return openPartyEditor('', selectId);
