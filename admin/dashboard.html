@@ -10,7 +10,7 @@
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&amp;family=Inter:wght@400;500;600;700;800&amp;family=Permanent+Marker&amp;display=swap" rel="stylesheet"/>
-<link href="admin.css?v=20261029-cultural-fix-v2" rel="stylesheet"/>
+<link href="admin.css?v=20261029-cultural-chat-v3" rel="stylesheet"/>
 </head>
 <body class="admin-dashboard-body" data-admin-page="dashboard" data-apollus-version="20260813-editais-v1-ui3-responsive">
 <div class="admin-boot" id="admin-loading">
@@ -608,13 +608,16 @@
             <button data-cultural-mode="orcamento" type="button">Orçamento</button>
             <button data-cultural-mode="adaptar" type="button">Adaptar</button>
           </div>
-          <label class="cultural-engine-field">
-            <span>Motor</span>
-            <select id="cultural-ai-engine" aria-label="Motor do assistente">
-              <option value="local">Local grátis</option>
-              <option value="openai">IA online · OpenAI API</option>
-            </select>
-          </label>
+          <div class="cultural-toolbar-actions">
+            <label class="cultural-engine-field">
+              <span>Motor</span>
+              <select id="cultural-ai-engine" aria-label="Motor do assistente">
+                <option value="local">Local grátis</option>
+                <option value="openai">IA online · OpenAI API</option>
+              </select>
+            </label>
+            <button class="cultural-focus-chat" id="cultural-focus-chat" type="button" aria-pressed="false">Focar conversa</button>
+          </div>
         </div>
         <div class="cultural-chat" id="cultural-chat" aria-live="polite"></div>
         <div class="cultural-ai-status" id="cultural-ai-status" hidden></div>
@@ -1151,6 +1154,6 @@
 <footer class="dialog-actions"><button class="admin-btn secondary" data-admin-close="" type="button">Cancelar</button><button class="admin-btn danger" id="confirm-action" type="button">Excluir</button></footer>
 </div>
 </dialog>
-<script src="admin.js?v=20261029-cultural-fix-v2" type="module"></script><script src="finance.js?v=20261029-cultural-fix-v2" type="module"></script><script src="cultural-projects.js?v=20261029-cultural-fix-v2" type="module"></script><script src="grants.js?v=20261029-cultural-fix-v2" type="module"></script>
+<script src="admin.js?v=20261029-cultural-chat-v3" type="module"></script><script src="finance.js?v=20261029-cultural-chat-v3" type="module"></script><script src="cultural-projects.js?v=20261029-cultural-chat-v3" type="module"></script><script src="grants.js?v=20261029-cultural-chat-v3" type="module"></script>
 </body>
 </html>
