@@ -3790,3 +3790,34 @@ img { max-width: 100%; display: block; }
 @media(max-width:1180px){.cultural-workspace-layout{grid-template-columns:minmax(0,1fr) 360px}.cultural-project-grid{grid-template-columns:1fr}}
 @media(max-width:900px){.cultural-hub-heading{grid-template-columns:1fr}.cultural-hub-heading .admin-btn{width:100%}.cultural-projects-overview{grid-template-columns:1fr 1fr}.cultural-workspace-card{height:calc(100vh - 18px)}.cultural-workspace-layout{grid-template-columns:1fr;overflow:auto}.cultural-chat-panel{min-height:70vh;border-right:0;border-bottom:1px solid var(--line)}.cultural-project-structure{min-height:520px}.cultural-workspace-header{align-items:flex-start}.cultural-workspace-header-actions{flex-direction:column;align-items:flex-end}}
 @media(max-width:650px){.cultural-projects-toolbar{grid-template-columns:1fr}.cultural-projects-overview{grid-template-columns:1fr}.cultural-hub-heading{padding:20px}.cultural-workspace-dialog{width:calc(100vw - 10px)}.cultural-workspace-header{padding:15px;flex-direction:column}.cultural-workspace-header-actions{width:100%;flex-direction:row;justify-content:space-between;align-items:center}.cultural-mode-tabs{padding-inline:10px}.cultural-chat{padding:16px 12px}.cultural-chat-composer{padding:12px}.cultural-chat-composer>div{align-items:stretch;flex-direction:column}.cultural-chat-composer .admin-btn{width:100%}.cultural-message{grid-template-columns:34px minmax(0,1fr)}.cultural-message.user{grid-template-columns:minmax(0,1fr) 34px}.cultural-message-avatar{width:34px;height:34px;border-radius:11px}.cultural-project-card footer{align-items:flex-start;flex-direction:column}}
+
+/* Projetos culturais — seletor de motor do assistente */
+.cultural-assistant-toolbar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+}
+.cultural-engine-field{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:12px;
+  font-weight:700;
+  color:var(--muted, #6c6874);
+}
+.cultural-engine-field select{
+  min-height:36px;
+  border:1px solid rgba(20,20,20,.14);
+  border-radius:10px;
+  background:#fff;
+  color:#151515;
+  padding:7px 10px;
+  font:600 12px/1.2 Inter, sans-serif;
+}
+@media (max-width:720px){
+  .cultural-assistant-toolbar{align-items:stretch}
+  .cultural-engine-field{justify-content:space-between;width:100%}
+  .cultural-engine-field select{flex:1;max-width:220px}
+}
