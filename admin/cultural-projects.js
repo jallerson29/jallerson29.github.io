@@ -14,6 +14,7 @@ const state = {
   mode: 'construir',
   sideTab: 'structure',
   aiBusy: false,
+  aiEngine: localStorage.getItem('apollus.culturalAiEngine') || 'local',
 };
 
 const TYPE_LABELS = {
@@ -342,7 +343,7 @@ async function sendMessage(event) {
 }
 
 
-async function askAssistant({ messageId, initial = false } = {}) {
+async function askLocalAssistant({ messageId, initial = false } = {}) {
   if (!state.currentProject || state.aiBusy) return;
   state.aiBusy = true;
   const status = el('cultural-ai-status');
@@ -539,6 +540,59 @@ async function askAssistant({ messageId, initial = false } = {}) {
   }
 }
 
+
+async function askOnlineAssistant({ messageId, initial = false } = {}) {
+  if (!state.currentProject || state.aiBusy) return;
+  state.aiBusy = true;
+  const status = el('cultural-ai-status');
+  const send = el('cultural-chat-send');
+  status.hidden = false;
+  status.className = 'cultural-ai-status working';
+  status.textContent = initial ? '✦ Organizando com IA online...' : '✦ Consultando IA online...';
+  send.disabled = true;
+  try {
+    const { data, error } = await supabase.functions.invoke('cultural-project-assistant', {
+      body: { project_id: state.currentProject.id, mode: state.mode, user_message_id: messageId || null },
+    });
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
+    await loadWorkspace(state.currentProject.id);
+    renderWorkspace();
+    await loadProjects();
+    status.hidden = true;
+  } catch (error) {
+    console.error(error);
+    let raw = String(error?.message || '');
+    try {
+      const response = error?.context;
+      if (response && typeof response.clone === 'function') {
+        const payload = await response.clone().json().catch(() => null);
+        if (payload?.error) raw = String(payload.error);
+      }
+    } catch {}
+
+    const creditIssue = /quota|credit|billing|insufficient|payment|saldo|cr[eé]dito/i.test(raw);
+    const keyIssue = /OPENAI_API_KEY|api key|unauthorized|invalid.*key/i.test(raw);
+    status.className = 'cultural-ai-status error';
+    if (creditIssue) {
+      status.innerHTML = '<strong>IA online sem saldo disponível.</strong><span>Adicione créditos na sua conta da OpenAI ou troque o motor para <b>Local grátis</b>. Sua mensagem continua salva.</span>';
+    } else if (keyIssue) {
+      status.innerHTML = '<strong>IA online ainda não está conectada.</strong><span>Configure uma <code>OPENAI_API_KEY</code> válida no Supabase. Enquanto isso, use <b>Local grátis</b>.</span>';
+    } else {
+      status.innerHTML = '<strong>Não consegui usar a IA online agora.</strong><span>' + escapeHtml(raw || 'Tente novamente em instantes.') + ' Você pode trocar para <b>Local grátis</b>.</span>';
+    }
+  } finally {
+    state.aiBusy = false;
+    send.disabled = !state.canEdit;
+  }
+}
+
+async function askAssistant({ messageId, initial = false } = {}) {
+  return state.aiEngine === 'openai'
+    ? askOnlineAssistant({ messageId, initial })
+    : askLocalAssistant({ messageId, initial });
+}
+
 async function saveSection(id, card) {
   if (!state.canEdit || !state.currentProject) return;
   const content = card.querySelector('[data-cultural-section-content]').value.trim();
@@ -588,6 +642,11 @@ function setupEvents() {
   el('cultural-save-version')?.addEventListener('click', saveVersion);
   document.querySelectorAll('[data-cultural-mode]').forEach((b) => b.addEventListener('click', () => setMode(b.dataset.culturalMode)));
   document.querySelectorAll('[data-cultural-side-tab]').forEach((b) => b.addEventListener('click', () => setSideTab(b.dataset.culturalSideTab)));
+  el('cultural-ai-engine')?.addEventListener('change', (event) => {
+    state.aiEngine = event.target.value === 'openai' ? 'openai' : 'local';
+    localStorage.setItem('apollus.culturalAiEngine', state.aiEngine);
+    notify(state.aiEngine === 'openai' ? 'IA online selecionada. O uso pode gerar cobrança na OpenAI.' : 'Motor local gratuito selecionado.', 'success');
+  });
 
   document.addEventListener('click', (event) => {
     const projectCard = event.target.closest('[data-cultural-open-project]');
@@ -621,6 +680,7 @@ async function init() {
   el('overview-new-cultural-project').hidden = !state.canEdit;
   el('cultural-chat-input').disabled = !state.canEdit;
   el('cultural-chat-send').disabled = !state.canEdit;
+  if (el('cultural-ai-engine')) el('cultural-ai-engine').value = state.aiEngine;
   if (!allowed) {
     el('cultural-projects-loading').hidden = true;
     return;
