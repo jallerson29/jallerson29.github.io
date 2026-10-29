@@ -3821,3 +3821,170 @@ img { max-width: 100%; display: block; }
   .cultural-engine-field{justify-content:space-between;width:100%}
   .cultural-engine-field select{flex:1;max-width:220px}
 }
+
+
+/* Projetos culturais — workspace de conversa v3 */
+.cultural-workspace-dialog{
+  width:min(1600px,calc(100vw - 20px));
+  max-width:1600px;
+}
+.cultural-workspace-card{
+  height:calc(100dvh - 20px);
+  max-height:940px;
+}
+.cultural-workspace-header{
+  flex:0 0 auto;
+  padding:16px 20px;
+}
+.cultural-workspace-header h2{
+  font-size:clamp(1.8rem,2.4vw,2.7rem);
+}
+.cultural-workspace-layout{
+  grid-template-columns:minmax(0,1fr) 330px;
+  overflow:hidden;
+}
+.cultural-workspace-layout.focus-chat{
+  grid-template-columns:minmax(0,1fr);
+}
+.cultural-workspace-layout.focus-chat .cultural-project-structure{
+  display:none;
+}
+.cultural-chat-panel{
+  min-height:0;
+  overflow:hidden;
+}
+.cultural-assistant-toolbar{
+  flex:0 0 auto;
+  padding:0 14px;
+  border-bottom:1px solid #eee8df;
+  background:#fff;
+}
+.cultural-assistant-toolbar .cultural-mode-tabs{
+  border-bottom:0;
+  padding:10px 0;
+}
+.cultural-toolbar-actions{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:8px 0;
+}
+.cultural-focus-chat{
+  min-height:36px;
+  border:1px solid rgba(20,20,20,.14);
+  border-radius:10px;
+  background:#f7f0e7;
+  padding:7px 11px;
+  font:700 12px/1.2 Inter,sans-serif;
+  cursor:pointer;
+}
+.cultural-focus-chat:hover{background:#efe5da}
+.cultural-chat{
+  flex:1 1 auto;
+  min-height:0;
+  padding:28px clamp(20px,4vw,56px);
+  gap:22px;
+  overscroll-behavior:contain;
+}
+.cultural-message{
+  width:auto;
+  max-width:min(82%,900px);
+  gap:11px;
+}
+.cultural-message>div:last-child{
+  min-width:0;
+}
+.cultural-message p{
+  font-size:.94rem;
+  line-height:1.55;
+  padding:13px 16px;
+  box-shadow:0 1px 0 rgba(16,16,16,.03);
+}
+.cultural-message.user p{
+  border-bottom-right-radius:6px;
+}
+.cultural-message.assistant p{
+  border-bottom-left-radius:6px;
+}
+.cultural-message small{
+  font-size:.68rem;
+  margin-top:5px;
+}
+.cultural-chat-composer{
+  flex:0 0 auto;
+  padding:12px 18px 16px;
+  box-shadow:0 -10px 28px rgba(16,16,16,.035);
+}
+.cultural-chat-composer textarea{
+  min-height:64px;
+  max-height:150px;
+  resize:vertical;
+  font-size:.95rem;
+  line-height:1.45;
+}
+.cultural-project-structure{
+  min-height:0;
+  overflow:hidden;
+}
+.cultural-side-view{
+  overscroll-behavior:contain;
+}
+@media(max-width:1180px){
+  .cultural-workspace-layout{grid-template-columns:minmax(0,1fr) 310px}
+}
+@media(max-width:900px){
+  .cultural-workspace-card{height:calc(100dvh - 10px)}
+  .cultural-workspace-layout{
+    grid-template-columns:1fr;
+    overflow:hidden;
+  }
+  .cultural-chat-panel{
+    min-height:0;
+    height:100%;
+    border-right:0;
+  }
+  .cultural-project-structure{
+    display:none;
+  }
+  .cultural-focus-chat{
+    display:none;
+  }
+  .cultural-chat{
+    padding:18px 14px;
+  }
+  .cultural-message{
+    max-width:94%;
+  }
+}
+@media(max-width:650px){
+  .cultural-workspace-header{
+    padding:12px 14px;
+  }
+  .cultural-workspace-header-actions{
+    gap:7px;
+    flex-wrap:wrap;
+  }
+  .cultural-assistant-toolbar{
+    padding:0 10px;
+  }
+  .cultural-toolbar-actions{
+    width:100%;
+    justify-content:space-between;
+    padding-top:0;
+  }
+  .cultural-engine-field{
+    width:100%;
+  }
+  .cultural-engine-field select{
+    max-width:none;
+  }
+  .cultural-chat-composer{
+    padding:10px 12px 12px;
+  }
+  .cultural-chat-composer small{
+    display:none;
+  }
+  .cultural-chat-composer>div{
+    margin-top:6px;
+  }
+}
