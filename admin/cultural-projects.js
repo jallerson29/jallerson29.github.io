@@ -217,6 +217,11 @@ async function openProjectWorkspace(projectId) {
   try {
     await loadWorkspace(projectId);
     renderWorkspace();
+    document.querySelector('.cultural-workspace-layout')?.classList.remove('focus-chat');
+    if (el('cultural-focus-chat')) {
+      el('cultural-focus-chat').textContent = 'Focar conversa';
+      el('cultural-focus-chat').setAttribute('aria-pressed', 'false');
+    }
     el('cultural-workspace-dialog').showModal();
   } catch (error) {
     console.error(error);
@@ -678,6 +683,14 @@ function setupEvents() {
     state.aiEngine = event.target.value === 'openai' ? 'openai' : 'local';
     localStorage.setItem('apollus.culturalAiEngine', state.aiEngine);
     notify(state.aiEngine === 'openai' ? 'IA online selecionada. O uso pode gerar cobrança na OpenAI.' : 'Motor local gratuito selecionado.', 'success');
+  });
+  el('cultural-focus-chat')?.addEventListener('click', () => {
+    const layout = document.querySelector('.cultural-workspace-layout');
+    const button = el('cultural-focus-chat');
+    if (!layout || !button) return;
+    const focused = layout.classList.toggle('focus-chat');
+    button.textContent = focused ? 'Mostrar estrutura' : 'Focar conversa';
+    button.setAttribute('aria-pressed', String(focused));
   });
 
   document.addEventListener('click', (event) => {
