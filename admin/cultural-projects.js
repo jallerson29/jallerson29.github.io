@@ -362,11 +362,22 @@ async function askAssistant({ messageId, initial = false } = {}) {
     status.hidden = true;
   } catch (error) {
     console.error(error);
-    const raw = String(error?.message || '');
-    const keyMissing = /OPENAI_API_KEY|configurad/i.test(raw);
+
+    let raw = String(error?.message || '');
+    try {
+      const response = error?.context;
+      if (response && typeof response.clone === 'function') {
+        const payload = await response.clone().json().catch(() => null);
+        if (payload?.error) raw = String(payload.error);
+      }
+    } catch (contextError) {
+      console.warn('Não foi possível ler o detalhe da Edge Function.', contextError);
+    }
+
+    const keyMissing = /OPENAI_API_KEY|chave.*IA|não configurad/i.test(raw);
     status.className = 'cultural-ai-status error';
     status.innerHTML = keyMissing
-      ? '<strong>IA pronta no painel, falta conectar a chave.</strong><span>Configure o secret <code>OPENAI_API_KEY</code> no Supabase para ativar as respostas do Assistente Apollus. O projeto e sua mensagem já foram salvos.</span>'
+      ? '<strong>Falta conectar a IA.</strong><span>O Assistente Apollus já está instalado, mas o secret <code>OPENAI_API_KEY</code> ainda não está configurado no Supabase. Sua mensagem foi salva normalmente.</span>'
       : `<strong>Não consegui responder agora.</strong><span>${escapeHtml(raw || 'Tente novamente em instantes.')} O conteúdo já ficou salvo.</span>`;
   } finally {
     state.aiBusy = false;
