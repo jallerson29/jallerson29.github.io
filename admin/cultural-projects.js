@@ -4,6 +4,7 @@ const state = {
   session: null,
   canView: false,
   canEdit: false,
+  canDelete: false,
   projects: [],
   openMemory: [],
   currentProject: null,
@@ -70,12 +71,14 @@ async function loadAccess() {
   const { data: sessionData } = await supabase.auth.getSession();
   state.session = sessionData.session;
   if (!state.session) return false;
-  const [view, edit] = await Promise.all([
+  const [view, edit, del] = await Promise.all([
     supabase.rpc('has_permission', { requested_permission: 'projects.view' }),
     supabase.rpc('has_permission', { requested_permission: 'projects.edit' }),
+    supabase.rpc('has_permission', { requested_permission: 'projects.delete' }),
   ]);
   state.canView = !view.error && view.data === true;
   state.canEdit = !edit.error && edit.data === true;
+  state.canDelete = !del.error && del.data === true;
   return state.canView;
 }
 
@@ -136,7 +139,7 @@ function renderProjectList() {
       <h3>${escapeHtml(p.title)}</h3>
       <p>${escapeHtml(p.summary || p.initial_context || 'Projeto iniciado. Continue a conversa para estruturar conceito, execução, cronograma e orçamento.')}</p>
       <div class="cultural-card-progress"><div><span style="width:${Number(p.progress || 0)}%"></span></div><strong>${Number(p.progress || 0)}%</strong></div>
-      <footer><span>${pending ? `${pending} decisão${pending === 1 ? '' : 'ões'} pendente${pending === 1 ? '' : 's'}` : 'Sem pendências registradas'}</span><button type="button">Continuar →</button></footer>
+      <footer><span>${pending ? `${pending} decisão${pending === 1 ? '' : 'ões'} pendente${pending === 1 ? '' : 's'}` : 'Sem pendências registradas'}</span><div class="cultural-card-actions"><button type="button">Continuar →</button>${state.canDelete ? `<button class="cultural-delete-project" data-cultural-delete-project="${p.id}" type="button" title="Apagar projeto">Apagar</button>` : ''}</div></footer>
     </article>`;
   }).join('');
 }
@@ -227,6 +230,7 @@ function renderWorkspace() {
   el('cultural-workspace-title').textContent = p.title;
   el('cultural-workspace-type').textContent = `${TYPE_LABELS[p.project_type] || 'Projeto cultural'} · ${STATUS_LABELS[p.status] || p.status}`;
   el('cultural-workspace-progress').textContent = `${Number(p.progress || 0)}%`;
+  if (el('cultural-delete-current')) el('cultural-delete-current').hidden = !state.canDelete;
   renderChat();
   renderSections();
   renderMemory();
@@ -593,6 +597,31 @@ async function askAssistant({ messageId, initial = false } = {}) {
     : askLocalAssistant({ messageId, initial });
 }
 
+async function deleteCulturalProject(id) {
+  if (!state.canDelete) {
+    notify('Você não tem permissão para apagar projetos.', 'error');
+    return;
+  }
+  const project = state.projects.find((item) => item.id === id) || (state.currentProject?.id === id ? state.currentProject : null);
+  if (!project) return;
+
+  const confirmed = window.confirm('Apagar definitivamente o projeto “' + project.title + '”? Esta ação também remove conversa, seções, decisões e versões.');
+  if (!confirmed) return;
+
+  const { data, error } = await supabase.rpc('apollus_delete_cultural_project', { target_id: id });
+  if (error || data !== true) {
+    notify(error?.message || 'Não foi possível apagar o projeto.', 'error');
+    return;
+  }
+
+  if (state.currentProject?.id === id) {
+    state.currentProject = null;
+    el('cultural-workspace-dialog')?.close();
+  }
+  await loadProjects();
+  notify('Projeto apagado.');
+}
+
 async function saveSection(id, card) {
   if (!state.canEdit || !state.currentProject) return;
   const content = card.querySelector('[data-cultural-section-content]').value.trim();
@@ -640,6 +669,9 @@ function setupEvents() {
   el('cultural-chat-form')?.addEventListener('submit', sendMessage);
   el('cultural-workspace-close')?.addEventListener('click', () => el('cultural-workspace-dialog').close());
   el('cultural-save-version')?.addEventListener('click', saveVersion);
+  el('cultural-delete-current')?.addEventListener('click', () => {
+    if (state.currentProject) deleteCulturalProject(state.currentProject.id);
+  });
   document.querySelectorAll('[data-cultural-mode]').forEach((b) => b.addEventListener('click', () => setMode(b.dataset.culturalMode)));
   document.querySelectorAll('[data-cultural-side-tab]').forEach((b) => b.addEventListener('click', () => setSideTab(b.dataset.culturalSideTab)));
   el('cultural-ai-engine')?.addEventListener('change', (event) => {
@@ -649,6 +681,13 @@ function setupEvents() {
   });
 
   document.addEventListener('click', (event) => {
+    const deleteProject = event.target.closest('[data-cultural-delete-project]');
+    if (deleteProject) {
+      event.preventDefault();
+      event.stopPropagation();
+      deleteCulturalProject(deleteProject.dataset.culturalDeleteProject);
+      return;
+    }
     const projectCard = event.target.closest('[data-cultural-open-project]');
     if (projectCard) openProjectWorkspace(projectCard.dataset.culturalOpenProject);
     const toggle = event.target.closest('[data-cultural-section-toggle]');
