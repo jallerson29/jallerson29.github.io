@@ -601,11 +601,20 @@
 
     <div class="cultural-workspace-layout">
       <section class="cultural-chat-panel">
-        <div class="cultural-mode-tabs" aria-label="Modo do assistente">
-          <button class="active" data-cultural-mode="construir" type="button">Construir</button>
-          <button data-cultural-mode="revisar" type="button">Revisar</button>
-          <button data-cultural-mode="orcamento" type="button">Orçamento</button>
-          <button data-cultural-mode="adaptar" type="button">Adaptar</button>
+        <div class="cultural-assistant-toolbar">
+          <div class="cultural-mode-tabs" aria-label="Modo do assistente">
+            <button class="active" data-cultural-mode="construir" type="button">Construir</button>
+            <button data-cultural-mode="revisar" type="button">Revisar</button>
+            <button data-cultural-mode="orcamento" type="button">Orçamento</button>
+            <button data-cultural-mode="adaptar" type="button">Adaptar</button>
+          </div>
+          <label class="cultural-engine-field">
+            <span>Motor</span>
+            <select id="cultural-ai-engine" aria-label="Motor do assistente">
+              <option value="local">Local grátis</option>
+              <option value="openai">IA online · OpenAI API</option>
+            </select>
+          </label>
         </div>
         <div class="cultural-chat" id="cultural-chat" aria-live="polite"></div>
         <div class="cultural-ai-status" id="cultural-ai-status" hidden></div>
