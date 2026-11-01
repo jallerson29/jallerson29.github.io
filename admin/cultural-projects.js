@@ -170,24 +170,20 @@ async function createProject(event) {
   const type = el('cultural-project-type').value;
   const button = el('cultural-project-create');
   const messageBox = el('cultural-project-message');
-  if (!title || !context) {
-    setFormMessage(messageBox, 'Informe o nome provisório e conte a ideia inicial.', 'error');
+  if (!title) {
+    setFormMessage(messageBox, 'Informe o nome do projeto.', 'error');
     return;
   }
   setButtonLoading(button, true, 'Criando projeto...');
   try {
     const { data: project, error } = await supabase.from('cultural_projects').insert({
-      title, project_type: type, initial_context: context, status: 'estruturando', created_by: state.session.user.id, updated_by: state.session.user.id,
+      title, project_type: type, initial_context: context || '', status: 'estruturando', created_by: state.session.user.id, updated_by: state.session.user.id,
     }).select('*').single();
     if (error) throw error;
-    const { data: message, error: messageError } = await supabase.from('cultural_project_messages').insert({
-      project_id: project.id, role: 'user', mode: 'construir', content: context, created_by: state.session.user.id,
-    }).select('id').single();
-    if (messageError) throw messageError;
     el('cultural-project-dialog').close();
     await loadProjects();
     await openProjectWorkspace(project.id);
-    await askAssistant({ messageId: message.id, initial: true });
+
   } catch (error) {
     console.error(error);
     setFormMessage(messageBox, error.message || 'Não foi possível criar o projeto.', 'error');
@@ -217,7 +213,9 @@ async function openProjectWorkspace(projectId) {
   try {
     await loadWorkspace(projectId);
     renderWorkspace();
-    document.querySelector('.cultural-workspace-layout')?.classList.remove('focus-chat');
+    document.querySelector('.cultural-workspace-layout')?.classList.remove('focus-chat', 'show-assistant');
+    el('cultural-toggle-assistant')?.setAttribute('aria-expanded', 'false');
+    if (el('cultural-toggle-assistant')) el('cultural-toggle-assistant').textContent = 'Assistente IA';
     if (el('cultural-focus-chat')) {
       el('cultural-focus-chat').textContent = 'Focar conversa';
       el('cultural-focus-chat').setAttribute('aria-pressed', 'false');
@@ -262,12 +260,12 @@ function renderSections() {
   if (!box) return;
   box.innerHTML = state.sections.map((s) => {
     const preview = (s.content || '').trim();
-    return `<article class="cultural-section-card status-${escapeHtml(s.status)}" data-cultural-section="${s.id}">
+    return `<article class="cultural-section-card open status-${escapeHtml(s.status)}" data-cultural-section="${s.id}">
       <button class="cultural-section-summary" type="button" data-cultural-section-toggle="${s.id}">
         <span class="cultural-section-dot"></span><span><strong>${escapeHtml(s.title)}</strong><small>${escapeHtml(SECTION_STATUS_LABELS[s.status] || s.status)}</small></span><em>›</em>
       </button>
-      <div class="cultural-section-editor" hidden>
-        <textarea rows="8" data-cultural-section-content>${escapeHtml(preview)}</textarea>
+      <div class="cultural-section-editor">
+        <textarea rows="12" data-cultural-section-content>${escapeHtml(preview)}</textarea>
         <div><span>${preview ? `${preview.length} caracteres` : 'Sem texto ainda'}</span><button class="mini-action" data-cultural-save-section="${s.id}" type="button" ${state.canEdit ? '' : 'disabled'}>Salvar</button></div>
       </div>
     </article>`;
@@ -674,6 +672,13 @@ function setupEvents() {
   el('cultural-chat-form')?.addEventListener('submit', sendMessage);
   el('cultural-workspace-close')?.addEventListener('click', () => el('cultural-workspace-dialog').close());
   el('cultural-save-version')?.addEventListener('click', saveVersion);
+  el('cultural-toggle-assistant')?.addEventListener('click', () => {
+    const layout = document.querySelector('.cultural-workspace-layout');
+    const button = el('cultural-toggle-assistant');
+    const active = layout?.classList.toggle('show-assistant') || false;
+    button?.setAttribute('aria-expanded', String(active));
+    if (button) button.textContent = active ? 'Ocultar assistente' : 'Assistente IA';
+  });
   el('cultural-delete-current')?.addEventListener('click', () => {
     if (state.currentProject) deleteCulturalProject(state.currentProject.id);
   });
