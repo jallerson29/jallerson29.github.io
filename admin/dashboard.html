@@ -572,15 +572,15 @@
 <dialog class="admin-dialog cultural-start-dialog" id="cultural-project-dialog">
   <form class="admin-dialog-card cultural-start-card" id="cultural-project-form">
     <header class="dialog-header">
-      <div><p class="admin-kicker">Assistente Apollus</p><h2>Vamos construir um projeto.</h2><p>Comece do jeito que você pensou. Não precisa estar organizado.</p></div>
+      <div><p class="admin-kicker">Projetos culturais</p><h2>Novo projeto</h2><p>Comece com um nome. Você pode escrever e organizar todas as seções depois.</p></div>
       <button aria-label="Fechar" class="dialog-close" data-admin-close type="button">×</button>
     </header>
     <div class="form-grid two-columns">
-      <label><span>Nome provisório *</span><input id="cultural-project-title" maxlength="180" placeholder="Ex.: Semana Farroupilha CWB 2027" required type="text"/></label>
+      <label><span>Nome do projeto *</span><input id="cultural-project-title" maxlength="180" placeholder="Nome do seu projeto" required type="text"/></label>
       <label><span>Tipo de projeto</span><select id="cultural-project-type"><option value="festival">Festival</option><option value="evento_cultural">Evento cultural</option><option value="musica">Música</option><option value="teatro">Teatro</option><option value="formacao">Formação / oficina</option><option value="audiovisual">Audiovisual</option><option value="circulacao">Circulação</option><option value="outro">Outro</option></select></label>
     </div>
-    <label class="cultural-idea-field"><span>O que você tem em mente? *</span><textarea id="cultural-project-context" rows="8" required placeholder="Ex.: Queremos fazer uma semana cultural gaúcha em Curitiba, com música, gastronomia, oficinas e um palco principal. Ainda não definimos equipe nem orçamento..."></textarea><small>O assistente vai separar fatos, decisões, pendências e próximas perguntas. Quando algo ainda não estiver decidido, ele deve manter como “A definir”.</small></label>
-    <footer class="dialog-actions"><button class="admin-btn secondary" data-admin-close type="button">Cancelar</button><button class="admin-btn primary" id="cultural-project-create" type="submit">Criar e conversar →</button></footer>
+    <label class="cultural-idea-field"><span>Descrição inicial (opcional)</span><textarea id="cultural-project-context" rows="5" placeholder="Escreva uma ideia inicial, se quiser. Você também pode deixar em branco."></textarea><small>O projeto abrirá no editor organizado por seções. O assistente é opcional.</small></label>
+    <footer class="dialog-actions"><button class="admin-btn secondary" data-admin-close type="button">Cancelar</button><button class="admin-btn primary" id="cultural-project-create" type="submit">Criar projeto →</button></footer>
     <p class="form-message" id="cultural-project-message"></p>
   </form>
 </dialog>
@@ -1154,6 +1154,6 @@
 <footer class="dialog-actions"><button class="admin-btn secondary" data-admin-close="" type="button">Cancelar</button><button class="admin-btn danger" id="confirm-action" type="button">Excluir</button></footer>
 </div>
 </dialog>
-<script src="admin.js?v=20261029-cultural-chat-recover1" type="module"></script><script src="finance.js?v=20261029-cultural-chat-recover1" type="module"></script><script src="cultural-projects.js?v=20261029-cultural-chat-recover1" type="module"></script><script src="grants.js?v=20261029-cultural-chat-recover1" type="module"></script>
+<script src="admin.js?v=20261029-cultural-chat-recover1" type="module"></script><script src="finance.js?v=20261029-cultural-chat-recover1" type="module"></script><script src="cultural-projects.js?v=20261101-cultural-editor-v3" type="module"></script><script src="grants.js?v=20261029-cultural-chat-recover1" type="module"></script>
 </body>
 </html>
