@@ -10,7 +10,7 @@
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&amp;family=Inter:wght@400;500;600;700;800&amp;family=Permanent+Marker&amp;display=swap" rel="stylesheet"/>
-<link href="admin.css?v=20261029-cultural-chat-recover1" rel="stylesheet"/>
+<link href="admin.css?v=20261101-cultural-clean2" rel="stylesheet"/>
 </head>
 <body class="admin-dashboard-body" data-admin-page="dashboard" data-apollus-version="20260813-editais-v1-ui3-responsive">
 <div class="admin-boot" id="admin-loading">
@@ -239,7 +239,7 @@
       <h2>Projetos culturais</h2>
       <p>Construa projetos com o Assistente Apollus local, organize decisões e depois adapte o projeto mestre a editais e oportunidades — sem API paga.</p>
     </div>
-    <button class="admin-btn primary" data-requires-permission="projects.edit" id="cultural-new-project" type="button">✦ Construir projeto</button>
+    <button class="admin-btn primary" data-requires-permission="projects.edit" id="cultural-new-project" type="button">+ Novo projeto</button>
   </div>
 
   <nav class="cultural-hub-tabs" aria-label="Projetos culturais">
@@ -267,7 +267,7 @@
       <article><span>Precisam de decisão</span><strong id="cultural-stat-decisions">0</strong><small>Pendências abertas</small></article>
       <article><span>Prontos para edital</span><strong id="cultural-stat-ready">0</strong><small>Estrutura consolidada</small></article>
     </div>
-    <div class="cultural-ai-intro">
+    <div class="cultural-ai-intro" hidden>
       <span>✦</span>
       <div><strong>Conte a ideia. O sistema organiza o projeto.</strong><p>O assistente trabalha por etapas, registra decisões, marca o que ainda está “A definir” e sugere a próxima pergunta sem poluir o painel.</p></div>
     </div>
@@ -595,7 +595,7 @@
       </div>
       <div class="cultural-workspace-header-actions">
         <div class="cultural-progress-pill"><strong id="cultural-workspace-progress">0%</strong><span>estruturado</span></div>
-        <button class="admin-btn secondary" id="cultural-save-version" type="button">Salvar versão</button><button class="admin-btn danger" id="cultural-delete-current" type="button">Apagar projeto</button>
+        <button class="admin-btn secondary" id="cultural-toggle-assistant" type="button" aria-expanded="false">Assistente IA</button><button class="admin-btn secondary" id="cultural-save-version" type="button">Salvar versão</button><button class="admin-btn danger" id="cultural-delete-current" type="button">Apagar projeto</button>
       </div>
     </header>
 
@@ -634,7 +634,7 @@
           <button data-cultural-side-tab="versions" type="button">Versões</button>
         </div>
         <div class="cultural-side-view active" data-cultural-side-view="structure">
-          <div class="cultural-next-decision" id="cultural-next-decision"></div>
+          <div class="cultural-next-decision" id="cultural-next-decision" hidden></div>
           <div class="cultural-section-list" id="cultural-section-list"></div>
         </div>
         <div class="cultural-side-view" data-cultural-side-view="decisions" hidden><div class="cultural-memory-list" id="cultural-memory-list"></div></div>
