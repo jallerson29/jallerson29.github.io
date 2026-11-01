@@ -4007,3 +4007,9 @@ img { max-width: 100%; display: block; }
 #cultural-workspace-dialog .cultural-section-editor textarea:focus{outline:2px solid #cfb1ef;outline-offset:1px}
 #cultural-workspace-dialog .cultural-next-decision[hidden],.cultural-ai-intro[hidden]{display:none!important}
 @media(max-width:740px){#cultural-workspace-dialog .cultural-project-structure{padding:16px!important}#cultural-workspace-dialog .cultural-workspace-header{padding:16px}#cultural-workspace-dialog .cultural-section-editor{padding:0 14px 14px}}
+
+/* Propostas gratuitas revisadas antes de salvar */
+#cultural-workspace-dialog .cultural-draft-preview{margin:14px 0;padding:16px;border:1px solid #d8c9e8;border-radius:12px;background:#faf7ff;display:grid;gap:10px}
+#cultural-workspace-dialog .cultural-draft-preview[hidden]{display:none!important}
+#cultural-workspace-dialog .cultural-draft-preview textarea{min-height:140px;background:white}
+#cultural-workspace-dialog .cultural-draft-preview>div{display:flex;gap:10px;flex-wrap:wrap}
