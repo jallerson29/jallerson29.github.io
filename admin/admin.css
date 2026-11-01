@@ -3988,3 +3988,22 @@ img { max-width: 100%; display: block; }
     margin-top:6px;
   }
 }
+
+/* Projeto cultural: interface limpa e editor principal */
+#cultural-workspace-dialog .cultural-workspace-card{background:#fafafa;max-width:1480px;width:min(96vw,1480px);color:#202024}
+#cultural-workspace-dialog .cultural-workspace-header{background:#fff;border-bottom:1px solid #e9e8ed;padding:20px 28px}
+#cultural-workspace-dialog .cultural-workspace-layout{display:flex;flex-direction:column;background:#fafafa;overflow-y:auto}
+#cultural-workspace-dialog .cultural-project-structure{order:1;width:100%;max-width:none;min-width:0;overflow:visible;background:transparent;border:0;padding:24px max(24px,calc((100% - 960px)/2))}
+#cultural-workspace-dialog .cultural-chat-panel{order:2;display:none;width:100%;min-width:0;max-width:none;min-height:420px;background:#fff;border-top:1px solid #e7e7eb}
+#cultural-workspace-dialog .cultural-workspace-layout.show-assistant .cultural-chat-panel{display:flex}
+#cultural-workspace-dialog .cultural-structure-tabs{justify-content:flex-start;background:transparent;border:0;border-bottom:1px solid #e8e7ea;border-radius:0;padding:0;margin:0 0 28px}
+#cultural-workspace-dialog .cultural-structure-tabs button{border-radius:0;box-shadow:none;background:transparent;color:#77717b;padding:14px 18px}
+#cultural-workspace-dialog .cultural-structure-tabs button.active{color:#7540ac;background:transparent;border-bottom:2px solid #9863cf}
+#cultural-workspace-dialog .cultural-section-list{display:grid;grid-template-columns:1fr;gap:18px}
+#cultural-workspace-dialog .cultural-section-card{background:#fff;border:1px solid #e6e3e9;border-radius:14px;overflow:hidden;box-shadow:none}
+#cultural-workspace-dialog .cultural-section-summary{padding:18px 22px;background:#fff;border:0}
+#cultural-workspace-dialog .cultural-section-editor{padding:0 22px 20px;background:#fff}
+#cultural-workspace-dialog .cultural-section-editor textarea{display:block;width:100%;min-height:190px;padding:15px 16px;background:#fff;border:1px solid #e3e2e7;border-radius:10px;resize:vertical;font:400 15px/1.75 Inter,system-ui,sans-serif;color:#26242a}
+#cultural-workspace-dialog .cultural-section-editor textarea:focus{outline:2px solid #cfb1ef;outline-offset:1px}
+#cultural-workspace-dialog .cultural-next-decision[hidden],.cultural-ai-intro[hidden]{display:none!important}
+@media(max-width:740px){#cultural-workspace-dialog .cultural-project-structure{padding:16px!important}#cultural-workspace-dialog .cultural-workspace-header{padding:16px}#cultural-workspace-dialog .cultural-section-editor{padding:0 14px 14px}}

@@ -170,24 +170,20 @@ async function createProject(event) {
   const type = el('cultural-project-type').value;
   const button = el('cultural-project-create');
   const messageBox = el('cultural-project-message');
-  if (!title || !context) {
-    setFormMessage(messageBox, 'Informe o nome provisório e conte a ideia inicial.', 'error');
+  if (!title) {
+    setFormMessage(messageBox, 'Informe o nome do projeto.', 'error');
     return;
   }
   setButtonLoading(button, true, 'Criando projeto...');
   try {
     const { data: project, error } = await supabase.from('cultural_projects').insert({
-      title, project_type: type, initial_context: context, status: 'estruturando', created_by: state.session.user.id, updated_by: state.session.user.id,
+      title, project_type: type, initial_context: context || '', status: 'estruturando', created_by: state.session.user.id, updated_by: state.session.user.id,
     }).select('*').single();
     if (error) throw error;
-    const { data: message, error: messageError } = await supabase.from('cultural_project_messages').insert({
-      project_id: project.id, role: 'user', mode: 'construir', content: context, created_by: state.session.user.id,
-    }).select('id').single();
-    if (messageError) throw messageError;
     el('cultural-project-dialog').close();
     await loadProjects();
     await openProjectWorkspace(project.id);
-    await askAssistant({ messageId: message.id, initial: true });
+
   } catch (error) {
     console.error(error);
     setFormMessage(messageBox, error.message || 'Não foi possível criar o projeto.', 'error');
@@ -217,7 +213,9 @@ async function openProjectWorkspace(projectId) {
   try {
     await loadWorkspace(projectId);
     renderWorkspace();
-    document.querySelector('.cultural-workspace-layout')?.classList.remove('focus-chat');
+    document.querySelector('.cultural-workspace-layout')?.classList.remove('focus-chat', 'show-assistant');
+    el('cultural-toggle-assistant')?.setAttribute('aria-expanded', 'false');
+    if (el('cultural-toggle-assistant')) el('cultural-toggle-assistant').textContent = 'Assistente IA';
     if (el('cultural-focus-chat')) {
       el('cultural-focus-chat').textContent = 'Focar conversa';
       el('cultural-focus-chat').setAttribute('aria-pressed', 'false');
@@ -262,12 +260,12 @@ function renderSections() {
   if (!box) return;
   box.innerHTML = state.sections.map((s) => {
     const preview = (s.content || '').trim();
-    return `<article class="cultural-section-card status-${escapeHtml(s.status)}" data-cultural-section="${s.id}">
+    return `<article class="cultural-section-card open status-${escapeHtml(s.status)}" data-cultural-section="${s.id}">
       <button class="cultural-section-summary" type="button" data-cultural-section-toggle="${s.id}">
         <span class="cultural-section-dot"></span><span><strong>${escapeHtml(s.title)}</strong><small>${escapeHtml(SECTION_STATUS_LABELS[s.status] || s.status)}</small></span><em>›</em>
       </button>
-      <div class="cultural-section-editor" hidden>
-        <textarea rows="8" data-cultural-section-content>${escapeHtml(preview)}</textarea>
+      <div class="cultural-section-editor">
+        <textarea rows="12" data-cultural-section-content>${escapeHtml(preview)}</textarea>
         <div><span>${preview ? `${preview.length} caracteres` : 'Sem texto ainda'}</span><button class="mini-action" data-cultural-save-section="${s.id}" type="button" ${state.canEdit ? '' : 'disabled'}>Salvar</button></div>
       </div>
     </article>`;
@@ -352,189 +350,115 @@ async function sendMessage(event) {
 }
 
 
-async function askLocalAssistant({ messageId, initial = false } = {}) {
+async function askLocalAssistant({ messageId } = {}) {
   if (!state.currentProject || state.aiBusy) return;
   state.aiBusy = true;
   const status = el('cultural-ai-status');
   const send = el('cultural-chat-send');
   status.hidden = false;
   status.className = 'cultural-ai-status working';
-  status.textContent = initial ? '✦ Organizando a ideia localmente...' : '✦ Organizando o projeto...';
+  status.textContent = 'Organizando informação...';
   send.disabled = true;
-
   try {
-    const latest = state.messages.find((m) => m.id === messageId) || [...state.messages].reverse().find((m) => m.role === 'user');
-    const text = String(latest?.content || state.currentProject.initial_context || '').trim();
-    const normalize = (value) => String(value || '').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').replace(/\\s+/g, ' ').trim();
-    const n = normalize(text);
-
-    const rules = [
-      ['orcamento', ['orcamento','valor','custo','preco','r$','cache','verba']],
-      ['equipe', ['equipe','tecnico','producao','staff','brigadista','seguranca']],
-      ['infraestrutura', ['palco','som','audio','pa ','line array','sub','monitor','in-ear','iem','led','luz','iluminacao','estrutura','gerador','tenda']],
-      ['publico_alvo', ['publico','audiencia','faixa etaria']],
-      ['programacao', ['programacao','show','banda','artista','oficina','atividade']],
-      ['acessibilidade', ['acessibilidade','libras','audiodescricao','pcd','cadeirante','rampa']],
-      ['democratizacao', ['gratuito','gratuita','ingresso','entrada','democratizacao']],
-      ['comunicacao', ['divulgacao','instagram','rede social','imprensa','comunicacao','midia']],
-      ['cronograma', ['data','datas','periodo','duracao','mes','semana']],
-      ['contrapartidas', ['contrapartida']],
-      ['objetivo_geral', ['objetivo geral','objetivo do projeto']],
-      ['objetivos_especificos', ['objetivos especificos']],
-      ['justificativa', ['justificativa','importancia','relevancia']],
-      ['metodologia', ['metodologia','execucao','logistica','montagem','desmontagem']],
-      ['apresentacao', ['ideia','conceito','proposta']],
+    const message = state.messages.find((m) => m.id === messageId);
+    const text = String(message?.content || '').trim();
+    if (!text) throw new Error('Nenhuma mensagem encontrada.');
+    const normalize = (value) => String(value || '').toLowerCase().normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
+    const normalized = normalize(text);
+    // Apenas categorização de texto: não inventa conteúdo nem simula uma IA generativa.
+    const categories = [
+      ['orcamento', /\b(orcamento|valor|custo|preco|cache|verba)\b|r\$/],
+      ['equipe', /\b(equipe|staff|brigadista|seguranca|contratacao)\b/],
+      ['infraestrutura', /\b(palco|som|audio|line array|subwoofer|monitor|in-ear|led|iluminacao|estrutura|gerador|tenda)\b/],
+      ['publico_alvo', /\b(publico.alvo|audiencia|faixa etaria|espectadores)\b/],
+      ['programacao', /\b(programacao|show|banda|artista|oficina|atividade|apresentacao musical)\b/],
+      ['acessibilidade', /\b(acessibilidade|libras|audiodescricao|pcd|cadeirante|rampa)\b/],
+      ['democratizacao', /\b(gratuito|gratuita|ingresso|entrada franca|democratizacao)\b/],
+      ['comunicacao', /\b(divulgacao|instagram|rede social|imprensa|comunicacao|midia)\b/],
+      ['cronograma', /\b(cronograma|datas?|periodo|duracao|semana|mes|prazo)\b/],
+      ['contrapartidas', /\b(contrapartida)\b/],
+      ['objetivo_geral', /\b(objetivo geral|objetivo principal)\b/],
+      ['objetivos_especificos', /\b(objetivos especificos)\b/],
+      ['justificativa', /\b(justificativa|relevancia)\b/],
+      ['metodologia', /\b(metodologia|logistica|montagem|desmontagem|execucao)\b/],
+      ['apresentacao', /\b(conceito|proposta|resumo do projeto)\b/],
     ];
-
-    const keys = rules.filter(([, terms]) => terms.some((term) => n.includes(term))).map(([key]) => key);
-    const isUndefined = /a definir|ainda nao defin|nao defin|sem valor definido|sem orcamento definido/.test(n);
-
-    for (const key of keys) {
-      const section = state.sections.find((s) => s.section_key === key);
-      if (!section) continue;
-      const current = String(section.content || '').trim();
-      const already = current && normalize(current).includes(n);
-      const content = already ? current : (current ? current + '\\n\\n' + text : text);
-      const { error: sectionError } = await supabase.from('cultural_project_sections').update({
-        content: content || (isUndefined ? 'A definir.' : null),
-        status: isUndefined ? 'a_definir' : 'rascunho',
-        source: 'manual',
-        updated_by: state.session.user.id,
-      }).eq('id', section.id);
-      if (sectionError) throw sectionError;
-    }
-
-    const looksLikeDecision = /\\b(vamos|definimos|definido|sera|vai ter|tera|manter|fica|ficou|sem |nao tera)\\b/.test(n);
-    if (looksLikeDecision && text.length <= 700) {
-      const duplicate = state.memory.find((m) => m.status === 'open' && m.item_type === 'decision' && normalize(m.title) === normalize(text.slice(0, 180)));
-      if (!duplicate) {
-        await supabase.from('cultural_project_memory').insert({
-          project_id: state.currentProject.id,
-          item_type: 'decision',
-          title: text.slice(0, 180),
-          content: keys.length ? 'Decisão relacionada a seções do projeto.' : null,
-          status: 'open',
-          priority: 'normal',
-          source_message_id: messageId || null,
-          created_by: state.session.user.id,
-          updated_by: state.session.user.id,
-        });
+    const matched = categories.find(([, pattern]) => pattern.test(normalized));
+    const section = matched && state.sections.find((s) => s.section_key === matched[0]);
+    const uncertain = /\b(a definir|ainda nao defin|nao definid|sem valor definido)\b/.test(normalized);
+    let updatedTitle = null;
+    let alreadySaved = false;
+    if (section) {
+      const previous = String(section.content || '').trim();
+      // Idempotência: não cola novamente a mesma informação, nem a espalha por várias seções.
+      alreadySaved = previous.split(/\n{2,}/).some((part) => normalize(part) === normalized);
+      if (!alreadySaved) {
+        const content = [previous, text].filter(Boolean).join('\n\n');
+        const { error } = await supabase.from('cultural_project_sections').update({
+          content, status: uncertain ? 'a_definir' : 'rascunho',
+          source: 'manual', updated_by: state.session.user.id,
+        }).eq('id', section.id);
+        if (error) throw error;
+        updatedTitle = section.title;
       }
     }
 
-    if (isUndefined) {
-      for (const key of keys) {
-        const section = state.sections.find((s) => s.section_key === key);
-        if (!section) continue;
-        const title = section.title + ': A definir';
-        const duplicate = state.memory.find((m) => m.status === 'open' && m.item_type === 'pending' && normalize(m.title) === normalize(title));
-        if (!duplicate) {
-          await supabase.from('cultural_project_memory').insert({
-            project_id: state.currentProject.id,
-            item_type: 'pending',
-            title,
-            content: 'Mantido como A definir, sem estimativa inventada.',
-            status: 'open',
-            priority: key === 'orcamento' ? 'high' : 'normal',
-            source_message_id: messageId || null,
-            created_by: state.session.user.id,
-            updated_by: state.session.user.id,
-          });
-        }
-      }
-    }
-
+    // Escolher uma pergunta inédita, não repetir perguntas já enviadas pelo assistente.
     await loadWorkspace(state.currentProject.id);
-
-    const priorities = {
+    const prompts = {
+      objetivo_geral: 'Qual é o objetivo principal do projeto?',
+      publico_alvo: 'Qual público vocês pretendem alcançar?',
+      programacao: 'Quais atividades ou apresentações estão previstas?',
+      infraestrutura: 'Qual estrutura física e técnica já está definida?',
+      cronograma: 'Quais datas ou etapas já estão definidas?',
+      acessibilidade: 'Quais recursos de acessibilidade serão previstos?',
+      democratizacao: 'Como será o acesso do público ao evento?',
+      comunicacao: 'Como pretendem divulgar o projeto?',
+      equipe: 'Quais funções ou responsáveis já estão definidos?',
+      orcamento: 'Quais custos já estão levantados?',
+      metodologia: 'Como será realizada a execução do projeto?',
+    };
+    const orderByType = {
       festival: ['publico_alvo','programacao','infraestrutura','cronograma','acessibilidade','democratizacao','comunicacao','equipe','orcamento'],
       evento_cultural: ['publico_alvo','programacao','infraestrutura','cronograma','acessibilidade','democratizacao','comunicacao','equipe','orcamento'],
       musica: ['objetivo_geral','publico_alvo','metodologia','cronograma','comunicacao','orcamento'],
       teatro: ['objetivo_geral','publico_alvo','programacao','infraestrutura','acessibilidade','cronograma','orcamento'],
       formacao: ['publico_alvo','metodologia','cronograma','acessibilidade','orcamento'],
       audiovisual: ['objetivo_geral','publico_alvo','metodologia','cronograma','comunicacao','orcamento'],
-      circulacao: ['publico_alvo','programacao','cronograma','infraestrutura','acessibilidade','orcamento'],
-      outro: ['objetivo_geral','publico_alvo','metodologia','cronograma','orcamento'],
     };
-    const questions = {
-      objetivo_geral: 'Qual é o objetivo principal do projeto?',
-      publico_alvo: 'Qual é o público que vocês querem atingir com este projeto?',
-      programacao: 'Qual será a programação ou quais atividades principais o projeto terá?',
-      infraestrutura: 'O que já está definido sobre a estrutura técnica e física do projeto?',
-      cronograma: 'Qual período ou quais datas vocês imaginam para realização do projeto?',
-      acessibilidade: 'Quais medidas de acessibilidade vocês querem prever para o projeto?',
-      democratizacao: 'Como será o acesso do público: gratuito, pago ou misto?',
-      comunicacao: 'Como vocês pretendem divulgar o projeto e alcançar o público?',
-      equipe: 'O que já está definido sobre a equipe do projeto?',
-      orcamento: 'Quais custos já são conhecidos e quais ainda devem permanecer como A definir?',
-      metodologia: 'Como vocês imaginam a execução prática do projeto?',
-    };
-    const order = priorities[state.currentProject.project_type] || priorities.outro;
-    let nextKey = null;
-    for (const key of order) {
-      const section = state.sections.find((s) => s.section_key === key);
-      if (section && (!section.content || section.status === 'vazio' || section.status === 'a_definir')) {
-        nextKey = key;
-        break;
-      }
-    }
-
-    let reply = '';
-    if (state.mode === 'adaptar') {
-      reply = 'Para adaptar sem inventar exigências, vincule primeiro o edital em “Editais & oportunidades”. Depois seguimos usando apenas os dados registrados nele.';
-    } else if (state.mode === 'orcamento') {
-      reply = 'Registrei o que você informou sem criar valores. ' + (questions.orcamento);
-    } else if (state.mode === 'revisar') {
-      const missing = state.sections.filter((s) => !s.content || s.status === 'vazio' || s.status === 'a_definir').slice(0, 4);
+    const order = orderByType[state.currentProject.project_type] ||
+      ['objetivo_geral','publico_alvo','metodologia','cronograma','orcamento'];
+    const asked = new Set(state.messages.filter((m) => m.role === 'assistant')
+      .map((m) => normalize(m.content)));
+    // Se já foi perguntado antes, não insistir; usuário pode preencher pelo editor quando quiser.
+    const next = order.find((key) => {
+      const part = state.sections.find((item) => item.section_key === key);
+      const question = prompts[key];
+      return part && question && !String(part.content || '').trim() &&
+        ![...asked].some((reply) => reply.includes(normalize(question)));
+    });
+    let reply;
+    if (state.mode === 'revisar') {
+      const missing = state.sections.filter((part) => !String(part.content || '').trim());
       reply = missing.length
-        ? 'Na revisão, ainda faltam definições em ' + missing.map((s) => s.title).join(', ') + '. ' + (nextKey ? questions[nextKey] : '')
-        : 'A estrutura principal está preenchida. Agora vale revisar coerência entre cronograma, equipe, infraestrutura e orçamento.';
+        ? 'Ainda há ' + missing.length + ' seções sem texto. Priorize: ' + missing.slice(0, 3).map((part) => part.title).join(', ') + '.'
+        : 'Todas as seções têm texto. Faça uma revisão final de coerência, datas e orçamento.';
+    } else if (state.mode === 'adaptar') {
+      reply = 'Para adaptar a um edital, use Editais & oportunidades e confira os critérios oficiais. O modo local não interpreta editais automaticamente.';
     } else {
-      const organized = keys.length
-        ? 'Organizei essa informação em ' + keys.map((key) => state.sections.find((s) => s.section_key === key)?.title).filter(Boolean).join(', ') + '.'
-        : 'Registrei essa informação no histórico do projeto.';
-      reply = organized + ' ' + (nextKey ? questions[nextKey] : 'Quer seguir pela revisão geral, orçamento ou adaptação para edital?');
+      const result = updatedTitle ? 'Adicionado em “' + updatedTitle + '”.' :
+        alreadySaved ? 'Essa informação já consta na seção correspondente.' :
+        'Mensagem salva no histórico. Não identifiquei uma seção com segurança; escreva diretamente no editor.';
+      reply = result + (next ? '\n\nPróximo ponto, se quiser definir agora: ' + prompts[next] :
+        '\n\nSem novas perguntas automáticas. Você pode continuar escrevendo nas seções.');
     }
-
-    const completed = state.sections.filter((s) => s.content && s.status !== 'vazio').length;
-    const progress = Math.min(90, Math.round((completed / Math.max(1, state.sections.length)) * 85));
-    const { error: projectError } = await supabase.from('cultural_projects').update({
-      summary: state.currentProject.summary || state.currentProject.initial_context || text,
-      current_focus: nextKey ? (state.sections.find((s) => s.section_key === nextKey)?.title || null) : null,
-      status: 'estruturando',
-      progress,
-      updated_by: state.session.user.id,
-    }).eq('id', state.currentProject.id);
-    if (projectError) throw projectError;
-
     const { error: replyError } = await supabase.from('cultural_project_messages').insert({
-      project_id: state.currentProject.id,
-      role: 'assistant',
-      mode: state.mode,
-      content: reply.trim(),
-      metadata: { engine: 'apollus-local-free-v1', no_external_api: true, initial: Boolean(initial) },
+      project_id: state.currentProject.id, role: 'assistant', mode: state.mode,
+      content: reply, metadata: { engine: 'apollus-local-organizer-v2', no_external_api: true },
       created_by: state.session.user.id,
     });
     if (replyError) throw replyError;
-
-    if (nextKey && questions[nextKey]) {
-      const qTitle = questions[nextKey];
-      const duplicateQ = state.memory.find((m) => m.status === 'open' && m.item_type === 'question' && normalize(m.title) === normalize(qTitle));
-      if (!duplicateQ) {
-        await supabase.from('cultural_project_memory').insert({
-          project_id: state.currentProject.id,
-          item_type: 'question',
-          title: qTitle,
-          content: 'Próxima decisão sugerida pelo Assistente Local Apollus.',
-          status: 'open',
-          priority: 'normal',
-          source_message_id: messageId || null,
-          created_by: state.session.user.id,
-          updated_by: state.session.user.id,
-        });
-      }
-    }
-
     await loadWorkspace(state.currentProject.id);
     renderWorkspace();
     await loadProjects();
@@ -542,13 +466,12 @@ async function askLocalAssistant({ messageId, initial = false } = {}) {
   } catch (error) {
     console.error(error);
     status.className = 'cultural-ai-status error';
-    status.innerHTML = '<strong>Não consegui organizar esta mensagem.</strong><span>' + escapeHtml(error?.message || 'Tente novamente em instantes.') + ' O conteúdo original continua salvo.</span>';
+    status.textContent = 'Não consegui organizar a mensagem: ' + (error?.message || 'Erro inesperado.');
   } finally {
     state.aiBusy = false;
     send.disabled = !state.canEdit;
   }
 }
-
 
 async function askOnlineAssistant({ messageId, initial = false } = {}) {
   if (!state.currentProject || state.aiBusy) return;
@@ -674,6 +597,13 @@ function setupEvents() {
   el('cultural-chat-form')?.addEventListener('submit', sendMessage);
   el('cultural-workspace-close')?.addEventListener('click', () => el('cultural-workspace-dialog').close());
   el('cultural-save-version')?.addEventListener('click', saveVersion);
+  el('cultural-toggle-assistant')?.addEventListener('click', () => {
+    const layout = document.querySelector('.cultural-workspace-layout');
+    const button = el('cultural-toggle-assistant');
+    const active = layout?.classList.toggle('show-assistant') || false;
+    button?.setAttribute('aria-expanded', String(active));
+    if (button) button.textContent = active ? 'Ocultar assistente' : 'Assistente IA';
+  });
   el('cultural-delete-current')?.addEventListener('click', () => {
     if (state.currentProject) deleteCulturalProject(state.currentProject.id);
   });
