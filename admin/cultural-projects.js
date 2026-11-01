@@ -15,7 +15,7 @@ const state = {
   mode: 'construir',
   sideTab: 'structure',
   aiBusy: false,
-  aiEngine: localStorage.getItem('apollus.culturalAiEngine') || 'local',
+  aiEngine: 'local',
 };
 
 const TYPE_LABELS = {
@@ -266,7 +266,7 @@ function renderSections() {
       </button>
       <div class="cultural-section-editor">
         <textarea rows="12" data-cultural-section-content>${escapeHtml(preview)}</textarea>
-        <div><span>${preview ? `${preview.length} caracteres` : 'Sem texto ainda'}</span><button class="mini-action" data-cultural-save-section="${s.id}" type="button" ${state.canEdit ? '' : 'disabled'}>Salvar</button></div>
+        <div><span>${preview ? `${preview.length} caracteres` : 'Sem texto ainda'}</span><button class="mini-action" data-cultural-draft-section="${s.id}" type="button" ${state.canEdit ? '' : 'disabled'}>Sugerir texto grátis</button><button class="mini-action" data-cultural-save-section="${s.id}" type="button" ${state.canEdit ? '' : 'disabled'}>Salvar</button></div><div class="cultural-draft-preview" hidden></div>
       </div>
     </article>`;
   }).join('');
@@ -519,10 +519,9 @@ async function askOnlineAssistant({ messageId, initial = false } = {}) {
   }
 }
 
-async function askAssistant({ messageId, initial = false } = {}) {
-  return state.aiEngine === 'openai'
-    ? askOnlineAssistant({ messageId, initial })
-    : askLocalAssistant({ messageId, initial });
+async function askAssistant({ messageId } = {}) {
+  // A versão gratuita não faz nenhuma chamada à API paga.
+  return askLocalAssistant({ messageId });
 }
 
 async function deleteCulturalProject(id) {
@@ -548,6 +547,58 @@ async function deleteCulturalProject(id) {
   }
   await loadProjects();
   notify('Projeto apagado.');
+}
+
+function suggestDraft(id, card) {
+  const section = state.sections.find((s) => String(s.id) === String(id));
+  if (!section || !state.currentProject) return;
+  const preview = card.querySelector('.cultural-draft-preview');
+  const title = String(state.currentProject.title || '').trim();
+  const context = String(state.currentProject.initial_context || '').trim();
+  const facts = state.sections.filter((s) => s.id !== section.id && String(s.content || '').trim())
+    .slice(0, 4).map((s) => s.title + ': ' + String(s.content).trim().slice(0, 250));
+  const openings = {
+    apresentacao: 'O projeto "' + title + '" propõe uma iniciativa cultural a ser desenvolvida conforme o planejamento e as definições registradas pela equipe.',
+    justificativa: 'A justificativa do projeto "' + title + '" será consolidada com base em sua relevância cultural, seus objetivos e no público a ser atendido.',
+    objetivo_geral: 'Desenvolver o projeto cultural "' + title + '", de acordo com as atividades e finalidades que serão definidas pela organização.',
+    objetivos_especificos: '• Definir as atividades e os resultados pretendidos.\n• Planejar a execução e os recursos necessários.\n• Estabelecer como acompanhar os resultados do projeto.',
+    publico_alvo: 'O público-alvo será definido a partir das atividades, da localização e das características culturais do projeto.',
+    metodologia: 'A execução será organizada em etapas de planejamento, preparação, realização e avaliação, com responsabilidades e datas a definir.',
+    programacao: 'A programação será composta pelas atividades culturais definidas pela organização. Atividades, horários e participantes: a definir.',
+    infraestrutura: 'A infraestrutura necessária será dimensionada conforme as atividades previstas, a capacidade do espaço e as necessidades técnicas. Itens e quantidades: a definir.',
+    equipe: 'As funções e responsabilidades da equipe serão definidas durante o planejamento. Integrantes e quantitativos: a definir.',
+    cronograma: 'O cronograma será organizado em preparação, execução e encerramento. Datas e prazos: a definir.',
+    orcamento: 'O orçamento será estruturado por itens de despesa, quantidades e valores comprovados. Valores ainda não levantados: a definir.',
+    acessibilidade: 'As medidas de acessibilidade deverão ser planejadas conforme o espaço, o público e as atividades. Soluções específicas: a definir.',
+    comunicacao: 'A comunicação do projeto será planejada considerando seus públicos, canais de divulgação e período de execução. Ações específicas: a definir.',
+  };
+  const base = openings[section.section_key] || 'Texto-base para a seção "' + section.title + '" do projeto "' + title + '". Informações específicas: a definir.';
+  const suggestion = base + (context ? '\n\nContexto informado pela equipe:\n' + context.slice(0, 900) : '') +
+    (facts.length ? '\n\nInformações já registradas para conferência:\n' + facts.join('\n') : '');
+  preview.hidden = false;
+  preview.replaceChildren();
+  const label = document.createElement('strong');
+  label.textContent = 'Sugestão baseada nos dados existentes — revise antes de salvar';
+  const textArea = document.createElement('textarea');
+  textArea.value = suggestion;
+  textArea.rows = 9;
+  const actions = document.createElement('div');
+  const apply = document.createElement('button');
+  apply.type = 'button';
+  apply.className = 'mini-action';
+  apply.textContent = 'Colocar no editor (sem salvar)';
+  apply.addEventListener('click', () => {
+    const field = card.querySelector('[data-cultural-section-content]');
+    if (field.value.trim() && !window.confirm('Substituir o texto atual no editor? Ele só será gravado ao clicar em Salvar.')) return;
+    field.value = textArea.value;
+    preview.hidden = true;
+    field.focus();
+  });
+  const close = document.createElement('button');
+  close.type = 'button'; close.className = 'mini-action'; close.textContent = 'Descartar';
+  close.addEventListener('click', () => { preview.hidden = true; });
+  actions.append(apply, close);
+  preview.append(label, textArea, actions);
 }
 
 async function saveSection(id, card) {
@@ -609,11 +660,6 @@ function setupEvents() {
   });
   document.querySelectorAll('[data-cultural-mode]').forEach((b) => b.addEventListener('click', () => setMode(b.dataset.culturalMode)));
   document.querySelectorAll('[data-cultural-side-tab]').forEach((b) => b.addEventListener('click', () => setSideTab(b.dataset.culturalSideTab)));
-  el('cultural-ai-engine')?.addEventListener('change', (event) => {
-    state.aiEngine = event.target.value === 'openai' ? 'openai' : 'local';
-    localStorage.setItem('apollus.culturalAiEngine', state.aiEngine);
-    notify(state.aiEngine === 'openai' ? 'IA online selecionada. O uso pode gerar cobrança na OpenAI.' : 'Motor local gratuito selecionado.', 'success');
-  });
   el('cultural-focus-chat')?.addEventListener('click', () => {
     const layout = document.querySelector('.cultural-workspace-layout');
     const button = el('cultural-focus-chat');
@@ -640,6 +686,8 @@ function setupEvents() {
       editor.hidden = !editor.hidden;
       card.classList.toggle('open', !editor.hidden);
     }
+    const draft = event.target.closest('[data-cultural-draft-section]');
+    if (draft) suggestDraft(draft.dataset.culturalDraftSection, draft.closest('[data-cultural-section]'));
     const save = event.target.closest('[data-cultural-save-section]');
     if (save) saveSection(save.dataset.culturalSaveSection, save.closest('[data-cultural-section]'));
     const resolve = event.target.closest('[data-cultural-resolve-memory]');
@@ -662,7 +710,7 @@ async function init() {
   el('overview-new-cultural-project').hidden = !state.canEdit;
   el('cultural-chat-input').disabled = !state.canEdit;
   el('cultural-chat-send').disabled = !state.canEdit;
-  if (el('cultural-ai-engine')) el('cultural-ai-engine').value = state.aiEngine;
+  if (el('cultural-ai-engine')) el('cultural-ai-engine').value = 'local';
   if (!allowed) {
     el('cultural-projects-loading').hidden = true;
     return;
