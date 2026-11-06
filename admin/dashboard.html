@@ -10,7 +10,7 @@
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&amp;family=Inter:wght@400;500;600;700;800&amp;family=Permanent+Marker&amp;display=swap" rel="stylesheet"/>
-<link href="admin.css?v=20261101-cultural-clean2" rel="stylesheet"/>
+<link href="admin.css?v=20261105-cultural-workspace1" rel="stylesheet"/>
 </head>
 <body class="admin-dashboard-body" data-admin-page="dashboard" data-apollus-version="20260813-editais-v1-ui3-responsive">
 <div class="admin-boot" id="admin-loading">
@@ -237,7 +237,7 @@
     <div>
       <p class="admin-kicker">Criação, captação e desenvolvimento</p>
       <h2>Projetos culturais</h2>
-      <p>Construa projetos com o Assistente Apollus local, organize decisões e depois adapte o projeto mestre a editais e oportunidades — sem API paga.</p>
+      <p>Organize projetos, decisões e inscrições em um só lugar.</p>
     </div>
     <button class="admin-btn primary" data-requires-permission="projects.edit" id="cultural-new-project" type="button">+ Novo projeto</button>
   </div>
@@ -261,11 +261,12 @@
         <option value="concluido">Concluído</option>
         <option value="arquivado">Arquivado</option>
       </select>
+      <select id="cultural-project-sort" aria-label="Ordenar projetos"><option value="updated">Atualizados recentemente</option><option value="title">Nome do projeto</option><option value="status">Status</option></select>
     </div>
     <div class="cultural-projects-overview">
       <article><span>Projetos ativos</span><strong id="cultural-stat-active">0</strong><small>Em desenvolvimento</small></article>
       <article><span>Precisam de decisão</span><strong id="cultural-stat-decisions">0</strong><small>Pendências abertas</small></article>
-      <article><span>Prontos para edital</span><strong id="cultural-stat-ready">0</strong><small>Estrutura consolidada</small></article>
+      <article><span>Prontos para edital</span><strong id="cultural-stat-ready">0</strong><small>Status “Pronto”</small></article>
     </div>
     <div class="cultural-ai-intro" hidden>
       <span>✦</span>
@@ -277,7 +278,7 @@
       <p>Comece com uma ideia incompleta. Você não precisa preencher um formulário inteiro para iniciar.</p>
       <button class="admin-btn primary" data-cultural-start-project type="button">✦ Construir primeiro projeto</button>
     </div>
-    <div class="cultural-project-grid" id="cultural-project-list"></div>
+    <div class="cultural-table-wrap" id="cultural-project-list"></div>
   </section>
 
   <section class="cultural-hub-view" data-cultural-hub-view="opportunities" id="cultural-opportunities-view" hidden>
@@ -594,8 +595,8 @@
         <h2 id="cultural-workspace-title">Projeto</h2>
       </div>
       <div class="cultural-workspace-header-actions">
-        <div class="cultural-progress-pill"><strong id="cultural-workspace-progress">0%</strong><span>estruturado</span></div>
-        <button class="admin-btn secondary" id="cultural-toggle-assistant" type="button" aria-expanded="false">Assistente IA</button><button class="admin-btn secondary" id="cultural-save-version" type="button">Salvar versão</button><button class="admin-btn danger" id="cultural-delete-current" type="button">Apagar projeto</button>
+        <span id="cultural-save-state" role="status">Todas as alterações salvas</span><strong id="cultural-workspace-progress" hidden>0%</strong>
+        <button class="admin-btn secondary" id="cultural-toggle-assistant" type="button" aria-expanded="false">Assistente local</button><button class="admin-btn secondary" id="cultural-save-version" type="button">Salvar versão</button><button class="admin-btn danger" id="cultural-delete-current" type="button">Apagar projeto</button>
       </div>
     </header>
 
@@ -603,21 +604,11 @@
       <section class="cultural-chat-panel">
         <div class="cultural-assistant-toolbar">
           <div class="cultural-mode-tabs" aria-label="Modo do assistente">
-            <button class="active" data-cultural-mode="construir" type="button">Construir</button>
-            <button data-cultural-mode="revisar" type="button">Revisar</button>
-            <button data-cultural-mode="orcamento" type="button">Orçamento</button>
+            <button class="active" data-cultural-mode="construir" type="button">Organizar informação</button>
+            <button data-cultural-mode="revisar" type="button">Verificar pendências</button>
             <button data-cultural-mode="adaptar" type="button">Adaptar</button>
           </div>
-          <div class="cultural-toolbar-actions">
-            <label class="cultural-engine-field">
-              <span>Modo</span>
-              <select id="cultural-ai-engine" aria-label="Motor do assistente">
-                <option value="local">Assistente gratuito</option>
-                
-              </select>
-            </label>
-            <button class="cultural-focus-chat" id="cultural-focus-chat" type="button" aria-pressed="false">Focar conversa</button>
-          </div>
+          <p class="cultural-assistant-description">Assistente local gratuito: organiza informações por regras e oferece modelos. Revise cada proposta antes de salvar. Não usa API paga.</p>
         </div>
         <div class="cultural-chat" id="cultural-chat" aria-live="polite"></div>
         <div class="cultural-ai-status" id="cultural-ai-status" hidden></div>
@@ -714,6 +705,7 @@
 </form>
 </section>
 <section data-grant-workspace-pane="writing" hidden>
+<div class="grant-cultural-import-toolbar"><button class="admin-btn secondary" id="grant-cultural-import-open" data-requires-permission="projects.edit" type="button">Trazer texto de projeto cultural</button><small>Copie seções para revisão. O projeto mestre permanece independente da inscrição.</small></div>
 <div class="grant-pane-heading"><div><p class="admin-kicker">Redação</p><h3>Escrever projeto</h3><p>Cada edital pode exigir uma estrutura diferente. Abra uma seção, escreva e ajuste o limite de caracteres conforme o formulário oficial.</p></div><button class="admin-btn secondary" data-requires-permission="projects.edit" id="grant-add-section" type="button">+ Nova seção</button></div>
 <div class="grant-writing-tip"><span>✎</span><div><strong>Texto modular, não um formulário gigante</strong><p>As seções ficam recolhidas para facilitar a revisão. Use o status “Em revisão” ou “Aprovado” conforme o texto amadurecer.</p></div></div>
 <div class="admin-list-state" hidden id="grant-section-empty">Nenhuma seção cadastrada.</div>
@@ -729,6 +721,9 @@
 </div>
 </dialog>
 
+<dialog class="admin-dialog grant-dialog" id="grant-cultural-import-dialog">
+<div class="admin-dialog-card"><header class="dialog-header"><h2>Trazer texto de projeto cultural</h2><button type="button" class="dialog-close" data-admin-close aria-label="Fechar">×</button></header><label>Projeto cultural<select id="grant-cultural-import-source"></select></label><p>Selecione as seções que deseja copiar. Revise o conteúdo e os limites do edital; a cópia só será salva nos botões de cada seção.</p><div id="grant-cultural-import-preview"></div><footer class="dialog-actions"><button type="button" class="admin-btn secondary" data-admin-close>Cancelar</button><button type="button" class="admin-btn primary" id="grant-cultural-import-apply" disabled>Colocar selecionadas no editor</button></footer></div>
+</dialog>
 <dialog class="admin-dialog grant-dialog" id="grant-section-dialog">
 <form class="admin-dialog-card compact" id="grant-section-form"><header class="dialog-header"><div><p class="admin-kicker">Editor do projeto</p><h2>Adicionar seção</h2></div><button aria-label="Fechar" class="dialog-close" data-admin-close type="button">×</button></header><div class="form-grid two-columns"><label class="form-wide"><span>Título da seção *</span><input id="grant-section-title" maxlength="200" required type="text" placeholder="Ex.: Plano de sustentabilidade"/></label><label><span>Limite de caracteres</span><input id="grant-section-limit" min="1" type="number" placeholder="Sem limite"/></label><label class="grant-required-toggle"><input id="grant-section-required" type="checkbox"/><span>Obrigatória neste edital</span></label></div><footer class="dialog-actions"><button class="admin-btn secondary" data-admin-close type="button">Cancelar</button><button class="admin-btn primary" id="grant-section-save" type="submit">Adicionar seção</button></footer><p class="form-message" id="grant-section-message"></p></form>
 </dialog>
@@ -1154,6 +1149,6 @@
 <footer class="dialog-actions"><button class="admin-btn secondary" data-admin-close="" type="button">Cancelar</button><button class="admin-btn danger" id="confirm-action" type="button">Excluir</button></footer>
 </div>
 </dialog>
-<script src="admin.js?v=20261029-cultural-chat-recover1" type="module"></script><script src="finance.js?v=20261029-cultural-chat-recover1" type="module"></script><script src="cultural-projects.js?v=20261101-cultural-free-v4" type="module"></script><script src="grants.js?v=20261029-cultural-chat-recover1" type="module"></script>
+<script src="admin.js?v=20261029-cultural-chat-recover1" type="module"></script><script src="finance.js?v=20261029-cultural-chat-recover1" type="module"></script><script src="cultural-projects.js?v=20261105-cultural-workspace1" type="module"></script><script src="grants.js?v=20261105-cultural-workspace1" type="module"></script>
 </body>
 </html>

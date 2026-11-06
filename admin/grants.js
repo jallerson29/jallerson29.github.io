@@ -14,6 +14,7 @@ const grantsState = {
   editingApplicationId: null,
   editingRequirementId: null,
   workspaceTab: 'summary',
+  drafts: new Map(),
 };
 
 const DEFAULT_SECTIONS = [
@@ -136,6 +137,7 @@ async function loadAccess() {
 
 async function loadGrantData({ quiet = false } = {}) {
   if (!grantsState.canView) return;
+  captureGrantDrafts();
   if (!quiet) {
     el('grants-loading').hidden = false;
     el('grants-list').innerHTML = '';
@@ -425,6 +427,7 @@ async function saveNewApplication(event) {
 }
 
 function openApplicationWorkspace(applicationId, tab = 'summary') {
+  captureGrantDrafts();
   const app = applicationById(applicationId);
   if (!app) return;
   grantsState.editingApplicationId = applicationId;
@@ -519,9 +522,21 @@ function sectionRowsForCurrentApp() {
     .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
 }
 
+function captureGrantDrafts() {
+  document.querySelectorAll('[data-grant-section-card]').forEach(card => {
+    const id = card.dataset.grantSectionCard;
+    const section = grantsState.sections.find(s => String(s.id) === id);
+    if (!section) return;
+    const get = name => card.querySelector(`[data-section-field="${name}"]`);
+    const draft = { title: get('title').value, content: get('content').value, character_limit: get('limit').value === '' ? null : Number(get('limit').value), status: get('status').value, required: get('required').checked };
+    const changed = Object.entries(draft).some(([key,value]) => value !== (section[key] ?? (key === 'character_limit' ? null : '')));
+    if (changed) grantsState.drafts.set(id, draft); else grantsState.drafts.delete(id);
+  });
+}
 function renderSectionEditor() {
+  captureGrantDrafts();
   const container = el('grant-section-list');
-  const sections = sectionRowsForCurrentApp();
+  const sections = sectionRowsForCurrentApp().map(s => ({...s,...grantsState.drafts.get(String(s.id))}));
   el('grant-section-empty').hidden = sections.length > 0;
   container.innerHTML = sections.map((section, index) => {
     const count = (section.content || '').length;
@@ -584,6 +599,8 @@ async function saveSection(sectionId, card) {
     };
     const { error } = await supabase.from('grant_application_sections').update(payload).eq('id', sectionId);
     if (error) throw error;
+    Object.assign(grantsState.sections.find(s => s.id === sectionId), payload);
+    captureGrantDrafts();
     await loadGrantData({ quiet: true });
     renderSectionEditor();
     const refreshed = document.querySelector(`[data-grant-section-card="${CSS.escape(sectionId)}"]`);
@@ -751,7 +768,60 @@ async function toggleRequirement(id, completed) {
   renderRequirementList();
 }
 
+// Importação explícita: uma cópia editável, sem alterar a FK de projetos públicos.
+async function openCulturalImport() {
+  if (!grantsState.canEdit) return;
+  const dialog = el('grant-cultural-import-dialog');
+  el('grant-cultural-import-preview').replaceChildren();
+  el('grant-cultural-import-apply').disabled = true;
+  const { data, error } = await supabase.from('cultural_projects').select('id,title').order('title');
+  if (error) return notify('Não foi possível consultar os projetos culturais.', 'error');
+  el('grant-cultural-import-source').innerHTML = '<option value="">Selecione um projeto cultural</option>' + (data || []).map(p => `<option value="${escapeHtml(p.id)}">${escapeHtml(p.title)}</option>`).join('');
+  dialog.showModal();
+}
+async function previewCulturalImport() {
+  const projectId = el('grant-cultural-import-source').value;
+  const preview = el('grant-cultural-import-preview');
+  preview.replaceChildren();
+  el('grant-cultural-import-apply').disabled = true;
+  if (!projectId) return;
+  const { data, error } = await supabase.from('cultural_project_sections').select('id,section_key,title,content').eq('project_id', projectId).order('sort_order');
+  if (projectId !== el('grant-cultural-import-source').value) return;
+  if (error) return notify('Não foi possível consultar as seções do projeto.', 'error');
+  const targets = sectionRowsForCurrentApp();
+  const rows = (data || []).filter(source => source.content?.trim() && targets.some(t => t.section_key === source.section_key));
+  preview.innerHTML = rows.length ? rows.map(source => {
+    const target = targets.find(t => t.section_key === source.section_key);
+    return `<label class="grant-cultural-import-row"><span><input type="checkbox" data-import-section="${escapeHtml(target.id)}"> ${escapeHtml(source.title)}${target.character_limit ? ` (limite: ${target.character_limit})` : ''}</span><textarea readonly aria-label="Texto de ${escapeHtml(source.title)}">${escapeHtml(source.content)}</textarea></label>`;
+  }).join('') : '<p>Nenhuma seção com texto e chave correspondente nesta inscrição.</p>';
+  el('grant-cultural-import-apply').disabled = !rows.length;
+}
+function applyCulturalImport() {
+  if (!grantsState.canEdit) return;
+  const checked = [...document.querySelectorAll('[data-import-section]:checked')];
+  if (!checked.length) return notify('Selecione ao menos uma seção.', 'error');
+  const fields = checked.map(input => ({
+    input, field: document.querySelector(`[data-grant-section-card="${CSS.escape(input.dataset.importSection)}"] [data-section-field="content"]`),
+    content: input.closest('label').querySelector('textarea').value,
+  })).filter(item => item.field);
+  if (fields.some(item => item.field.value.trim()) && !window.confirm('Substituir o texto no editor das seções selecionadas? As alterações só serão gravadas ao salvar cada seção.')) return;
+  fields.forEach(({ field, content }) => {
+    field.value = content;
+    field.closest('details').open = true;
+  });
+  captureGrantDrafts();
+  updateSectionCounters();
+  el('grant-cultural-import-dialog').close();
+  notify('Textos colocados no editor. Revise os limites e salve cada seção desejada.');
+}
+
 function setupGrantEvents() {
+  document.addEventListener('input', event => { if (event.target.closest('[data-grant-section-card]')) captureGrantDrafts(); });
+  document.addEventListener('change', event => { if (event.target.closest('[data-grant-section-card]')) captureGrantDrafts(); });
+  window.addEventListener('beforeunload', event => { captureGrantDrafts(); if (grantsState.drafts.size) { event.preventDefault(); event.returnValue = ''; } });
+  el('grant-cultural-import-open')?.addEventListener('click', openCulturalImport);
+  el('grant-cultural-import-source')?.addEventListener('change', previewCulturalImport);
+  el('grant-cultural-import-apply')?.addEventListener('click', applyCulturalImport);
   el('grants-new-opportunity')?.addEventListener('click', () => openOpportunityDialog());
   el('overview-new-grant')?.addEventListener('click', () => {
     document.querySelector('[data-admin-tab="grants"]')?.click();
@@ -820,3 +890,4 @@ initializeGrants().catch((error) => {
   console.error('Falha ao iniciar Editais:', error);
   notify('O módulo de Editais não pôde ser iniciado.', 'error');
 });
+
